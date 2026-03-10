@@ -19,13 +19,14 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 import sys
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 from qgis.core import QgsGeometry
 
 from .error.lrserror import LrsError
-from .utils import LrsUnits, formatMeasure, doubleNear, debug
+from .utils import LrsUnits, doubleNear, formatMeasure
 
 
 class LrsRouteBase(metaclass=ABCMeta):
@@ -34,7 +35,7 @@ class LrsRouteBase(metaclass=ABCMeta):
         self.measureUnit = LrsUnits.UNKNOWN
         # parallelMode, http://en.wikipedia.org/wiki/Multiple_edges:
         # 'error', 'exclude' (do not include in parts), span (replace by straight line)
-        self.parallelMode = kwargs.get('parallelMode', 'error')
+        self.parallelMode = kwargs.get("parallelMode", "error")
         self.parts = []  # LrsRoutePart subclasses list
         self.overlaps = []  # list of LrsRecords with milestoneFrom, milestoneTo overlaps
         self.errors = []  # LrsError list of route errors
@@ -75,7 +76,13 @@ class LrsRouteBase(metaclass=ABCMeta):
             measureFrom = formatMeasure(record.milestoneFrom, self.measureUnit)
             measureTo = formatMeasure(record.milestoneTo, self.measureUnit)
             self.errors.append(
-                LrsError(LrsError.DUPLICATE_REFERENCING, geo, routeId=self.routeId, measure=[measureFrom, measureTo]))
+                LrsError(
+                    LrsError.DUPLICATE_REFERENCING,
+                    geo,
+                    routeId=self.routeId,
+                    measure=[measureFrom, measureTo],
+                )
+            )
             part.removeRecord(record)
 
     # returns ( QgsPointXY, error )
@@ -93,17 +100,22 @@ class LrsRouteBase(metaclass=ABCMeta):
                 for record in part.records:
                     m = abs(record.milestoneFrom - start)
                     if m <= tolerance and m < nearestMeasure:
-                        nearestPoint = part.eventPointXY(record.milestoneFrom, startOffset)
+                        nearestPoint = part.eventPointXY(
+                            record.milestoneFrom, startOffset
+                        )
                         nearestMeasure = m
 
                     m = abs(record.milestoneTo - start)
                     if m <= tolerance and m < nearestMeasure:
-                        nearestPoint = part.eventPointXY(record.milestoneTo, startOffset)
+                        nearestPoint = part.eventPointXY(
+                            record.milestoneTo, startOffset
+                        )
                         nearestMeasure = m
 
-            if nearestPoint: return nearestPoint, None
+            if nearestPoint:
+                return nearestPoint, None
 
-        return None, 'measure not available'
+        return None, "measure not available"
 
     # returns ( QgsMultiPolyline, error )
     def eventMultiPolyLine(self, start, end, tolerance=0, oStart=0.0, oEnd=0.0):
@@ -121,7 +133,7 @@ class LrsRouteBase(metaclass=ABCMeta):
         error = None
         if len(multipolyline) == 0:
             multipolyline = None
-            error = 'segment not available'
+            error = "segment not available"
         else:
             # make error message  for gaps
             measures.sort(reverse=(start > end))
@@ -131,10 +143,14 @@ class LrsRouteBase(metaclass=ABCMeta):
                     measures[i - 1][1] = measures[i][1]
                     del measures[i]
 
-            if ((start <= end) and (start < measures[0][0])) or ((start > end) and (start > measures[0][0])):
+            if ((start <= end) and (start < measures[0][0])) or (
+                (start > end) and (start > measures[0][0])
+            ):
                 measures.insert(0, [start, start])
 
-            if ((start <= end) and (end > measures[-1][1])) or ((start > end) and (end < measures[-1][1])):
+            if ((start <= end) and (end > measures[-1][1])) or (
+                (start > end) and (end < measures[-1][1])
+            ):
                 measures.append([end, end])
 
             gaps = []
@@ -146,10 +162,10 @@ class LrsRouteBase(metaclass=ABCMeta):
                     continue
 
                 # measures are not formated (rounded) to show to user real data and dont hidden the true error by rounding
-                gaps.append('%s-%s' % (measureFrom, measureTo))
+                gaps.append("%s-%s" % (measureFrom, measureTo))
 
             if gaps:
-                error = 'segments %s not available' % ', '.join(gaps)
+                error = "segments %s not available" % ", ".join(gaps)
                 # debug( error )
 
         # debug( '%s' % measures )

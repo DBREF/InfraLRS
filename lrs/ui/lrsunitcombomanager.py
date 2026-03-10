@@ -19,17 +19,18 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QStandardItem
 from qgis.core import QgsProject
 
-from ..lrs.utils import LrsUnits, PROJECT_PLUGIN_NAME, debug
+from ..lrs.utils import PROJECT_PLUGIN_NAME, LrsUnits
 from .lrscombomanagerbase import LrsComboManagerBase
 
 
 class LrsUnitComboManager(LrsComboManagerBase):
     def __init__(self, comboOrList, **kwargs):
-        kwargs['sort'] = False
+        kwargs["sort"] = False
         super(LrsUnitComboManager, self).__init__(comboOrList, **kwargs)
 
         for unit in [LrsUnits.METER, LrsUnits.KILOMETER, LrsUnits.FEET, LrsUnits.MILE]:
@@ -50,11 +51,13 @@ class LrsUnitComboManager(LrsComboManagerBase):
         QgsProject.instance().writeEntry(PROJECT_PLUGIN_NAME, self.settingsName, name)
 
     def readFromProject(self):
-        name = QgsProject.instance().readEntry(PROJECT_PLUGIN_NAME, self.settingsName)[0]
+        name = QgsProject.instance().readEntry(PROJECT_PLUGIN_NAME, self.settingsName)[
+            0
+        ]
 
         unit = LrsUnits.unitFromName(name)
         idx = self.comboList[0].findData(unit, Qt.UserRole)
-        #debug( "readFromProject settingsName = %s name = %s idx = %s" % ( self.settingsName, name, idx) )
+        # debug( "readFromProject settingsName = %s name = %s idx = %s" % ( self.settingsName, name, idx) )
         if idx != -1:
             for combo in self.comboList:
                 combo.setCurrentIndex(idx)

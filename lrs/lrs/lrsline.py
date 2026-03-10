@@ -22,7 +22,7 @@
 # Import the PyQt and QGIS libraries
 # from PyQt4.QtGui import *
 
-from .utils import *
+from qgis.core import QgsGeometry
 
 
 class LrsLine(object):
@@ -32,7 +32,8 @@ class LrsLine(object):
         self.geo = QgsGeometry(geo)  # store copy of QgsGeometry, may be None
 
     def getNumParts(self):
-        if not self.geo: return 0
+        if not self.geo:
+            return 0
 
         if self.geo.isMultipart():
             return len(self.geo.asMultiPolyline())

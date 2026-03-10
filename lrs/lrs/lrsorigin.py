@@ -19,6 +19,7 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from hashlib import md5
 
 
@@ -34,5 +35,3 @@ class LrsOrigin(object):
         s = "%s-%s-%s-%s" % (self.geoType, self.fid, self.geoPart, self.nGeoParts)
         m = md5(s.encode())
         return m.digest()
-
-

@@ -19,11 +19,11 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QStandardItem
-from qgis.core import QgsProject
 
-from ..lrs.utils import debug
+from qgis.core import QgsProject
+from qgis.PyQt.QtCore import Qt, pyqtSignal
+from qgis.PyQt.QtGui import QStandardItem
+
 from .lrscombomanagerbase import LrsComboManagerBase
 
 
@@ -33,7 +33,7 @@ class LrsFieldComboManager(LrsComboManagerBase):
 
     def __init__(self, comboOrList, layerComboManager, **kwargs):
         super(LrsFieldComboManager, self).__init__(comboOrList, **kwargs)
-        self.types = kwargs.get('types', None)  # QVariant.type
+        self.types = kwargs.get("types", None)  # QVariant.type
         self.layerComboManager = layerComboManager
         # it is easier/safer to work with layer id instead of with the layer, because
         # it may be deleted in C++ and disconnect fails
@@ -61,7 +61,7 @@ class LrsFieldComboManager(LrsComboManagerBase):
             layer.attributeDeleted.disconnect(self.resetFields)
 
     def layerChanged(self, layer):
-        #debug("layerChanged settingsName = %s" % self.settingsName)
+        # debug("layerChanged settingsName = %s" % self.settingsName)
         if not QgsProject:
             return
 
@@ -78,14 +78,14 @@ class LrsFieldComboManager(LrsComboManagerBase):
             layer.attributeDeleted.connect(self.resetFields)
 
     def resetFields(self):
-        #debug("resetFields settingsName = %s" % self.settingsName)
+        # debug("resetFields settingsName = %s" % self.settingsName)
         layer = QgsProject.instance().mapLayer(self.layerId)
         if not layer:
             for combo in self.comboList:
                 combo.clear()
                 return
 
-        #debug("resetFields layer = %s" % layer.name())
+        # debug("resetFields layer = %s" % layer.name())
 
         # Add none item
         if self.allowNone:
@@ -97,20 +97,23 @@ class LrsFieldComboManager(LrsComboManagerBase):
 
         fieldsNames = []
         for idx, field in enumerate(layer.fields()):
-            if self.types and not field.type() in self.types: continue
+            if self.types and field.type() not in self.types:
+                continue
             fieldsNames.append(field.name())
 
         # delete removed
         for i in range(self.model.rowCount() - 1, -1, -1):
             fieldName = self.model.item(i).data(Qt.UserRole)
-            if self.allowNone and fieldName is None: continue
-            if not fieldName in fieldsNames:
+            if self.allowNone and fieldName is None:
+                continue
+            if fieldName not in fieldsNames:
                 self.model.removeRows(i, 1)
 
         # add new fields
         for idx, field in enumerate(layer.fields()):
-            #debug("resetFields %s %s %s" % (field.name(), field.type(), self.types))
-            if self.types and not field.type() in self.types: continue
+            # debug("resetFields %s %s %s" % (field.name(), field.type(), self.types))
+            if self.types and field.type() not in self.types:
+                continue
             fieldName = field.name()
             fieldLabel = layer.attributeDisplayName(idx)
 
@@ -125,10 +128,10 @@ class LrsFieldComboManager(LrsComboManagerBase):
         self.proxy.sort(0)
 
     def currentIndexChanged(self, idx):
-        #debug("LrsFieldComboManager currentIndexChanged idx = %s settingsName = %s" % (idx, self.settingsName))
+        # debug("LrsFieldComboManager currentIndexChanged idx = %s settingsName = %s" % (idx, self.settingsName))
         super(LrsFieldComboManager, self).currentIndexChanged(idx)
         self.fieldNameChanged.emit(self.getFieldName())
 
     def activated(self, idx):
-        #self.debug("LrsFieldComboManager activated idx = %s value = %s" % (idx, self.getFieldName()))
+        # self.debug("LrsFieldComboManager activated idx = %s value = %s" % (idx, self.getFieldName()))
         self.fieldNameActivated.emit(self.getFieldName())

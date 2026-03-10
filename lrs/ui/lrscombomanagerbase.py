@@ -22,9 +22,18 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 # Import the PyQt and QGIS libraries
-from ..lrs.utils import *
-from qgis.PyQt.QtGui import *
+from qgis.PyQt.QtGui import (
+    QgsProject,
+    QObject,
+    QSortFilterProxyModel,
+    QStandardItem,
+    QStandardItemModel,
+    Qt,
+)
+
+from ..lrs.utils import PROJECT_PLUGIN_NAME, debug
 
 
 # combo is QComboBox or list of QComboBox
@@ -36,11 +45,11 @@ class LrsComboManagerBase(QObject):
             self.comboList = comboOrList
         else:
             self.comboList = [comboOrList]  # QComboBox list
-        self.settingsName = kwargs.get('settingsName')
-        self.allowNone = kwargs.get('allowNone', False)  # allow select none
-        self.sort = kwargs.get('sort', True)  # sort values
+        self.settingsName = kwargs.get("settingsName")
+        self.allowNone = kwargs.get("allowNone", False)  # allow select none
+        self.sort = kwargs.get("sort", True)  # sort values
         # debug ( "sort = %s" % self.sort )
-        self.defaultValue = kwargs.get('defaultValue', None)
+        self.defaultValue = kwargs.get("defaultValue", None)
 
         self.model = QStandardItemModel(0, 1, self)
 
@@ -52,12 +61,12 @@ class LrsComboManagerBase(QObject):
 
         for combo in self.comboList:
             if self.proxy:
-                combo.setModel(self.proxy);
+                combo.setModel(self.proxy)
             else:
                 combo.setModel(self.model)
 
         # options is dict with of [value,label] pairs
-        self.setOptions(kwargs.get('options', []))
+        self.setOptions(kwargs.get("options", []))
 
     def debug(self, message):
         debug("CM(%s): %s" % (self.settingsName, message))
@@ -70,8 +79,8 @@ class LrsComboManagerBase(QObject):
 
     def currentIndexChanged(self, idx):
         # reset other combos
-        #self.debug("LrsComboManager currentIndexChanged")
-        #debug("currentIndexChanged sender = %s" % self.sender())
+        # self.debug("LrsComboManager currentIndexChanged")
+        # debug("currentIndexChanged sender = %s" % self.sender())
         for combo in self.comboList:
             if combo == self.sender():
                 continue
@@ -106,15 +115,15 @@ class LrsComboManagerBase(QObject):
     def writeToProject(self):
         idx = self.comboList[0].currentIndex()
         val = self.comboList[0].itemData(idx, Qt.UserRole)
-        #self.debug("writeToProject val = %s" % val)
+        # self.debug("writeToProject val = %s" % val)
         QgsProject.instance().writeEntry(PROJECT_PLUGIN_NAME, self.settingsName, val)
 
     def readFromProject(self):
         val = QgsProject.instance().readEntry(PROJECT_PLUGIN_NAME, self.settingsName)[0]
-        if val == '':
+        if val == "":
             val = None  # to set correctly none
 
-        #self.debug("readFromProject val = %s" % val)
+        # self.debug("readFromProject val = %s" % val)
 
         for combo in self.comboList:
             idx = combo.findData(val, Qt.UserRole)

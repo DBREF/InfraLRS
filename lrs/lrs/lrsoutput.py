@@ -20,7 +20,16 @@
  ***************************************************************************/
 """
 
-from .utils import *
+from qgis.core import (
+    QgsFeature,
+    QgsField,
+    QgsProject,
+    QgsProviderRegistry,
+    QgsVectorLayer,
+)
+from qgis.PyQt.QtCore import QObject, QVariant
+
+from .utils import crsString
 
 
 # Write Lrs to memory output layer
@@ -32,30 +41,38 @@ class LrsOutput(QObject):
         self.showProgressFunction = showProgressFunction
 
     def output(self, outputName):
-        #geometryType = "MultiLineStringM"
+        # geometryType = "MultiLineStringM"
         geometryType = "LineStringM"
         uri = geometryType
-        uri += "?crs=%s" % crsString(self.iface.mapCanvas().mapSettings().destinationCrs())
-        provider = QgsProviderRegistry.instance().createProvider('memory', uri)
+        uri += "?crs=%s" % crsString(
+            self.iface.mapCanvas().mapSettings().destinationCrs()
+        )
+        provider = QgsProviderRegistry.instance().createProvider("memory", uri)
 
         routeField = self.lrs.routeField
         routeFieldName = routeField.name()
         routeFieldType = "string"
-        if routeField.type() == QVariant.Int or routeField.type() == QVariant.UInt \
-                or routeField.type() == QVariant.LongLong or routeField.type() == QVariant.ULongLong:
+        if (
+            routeField.type() == QVariant.Int
+            or routeField.type() == QVariant.UInt
+            or routeField.type() == QVariant.LongLong
+            or routeField.type() == QVariant.ULongLong
+        ):
             routeFieldType = "int"
         elif routeField.type() == QVariant.Double:
             routeFieldType = "double"
 
-        provider.addAttributes([
-            QgsField(routeFieldName, routeField.type(), routeFieldType),
-            QgsField("m_from", QVariant.Double, 'double'),
-            QgsField("m_to", QVariant.Double, 'double'),
-        ])
+        provider.addAttributes(
+            [
+                QgsField(routeFieldName, routeField.type(), routeFieldType),
+                QgsField("m_from", QVariant.Double, "double"),
+                QgsField("m_to", QVariant.Double, "double"),
+            ]
+        )
         uri = provider.dataSourceUri()
-        #debug('uri: %s' % uri)
+        # debug('uri: %s' % uri)
 
-        outputLayer = QgsVectorLayer(uri, outputName, 'memory')
+        outputLayer = QgsVectorLayer(uri, outputName, "memory")
         outputFeatures = []
 
         total = len(self.lrs.getParts())
@@ -70,12 +87,17 @@ class LrsOutput(QObject):
             if not geo:
                 continue
 
-            if routeField.type() == QVariant.Int or routeField.type() == QVariant.Double:
+            if (
+                routeField.type() == QVariant.Int
+                or routeField.type() == QVariant.Double
+            ):
                 routeVal = part.routeId
             else:
                 routeVal = "%s" % part.routeId
 
-            outputFeature = QgsFeature(outputLayer.fields())  # fields must exist during feature life!
+            outputFeature = QgsFeature(
+                outputLayer.fields()
+            )  # fields must exist during feature life!
             outputFeature.setGeometry(geo)
             outputFeature[routeFieldName] = routeVal
             outputFeature["m_from"] = part.milestoneMeasureFrom()
@@ -85,4 +107,8 @@ class LrsOutput(QObject):
 
         outputLayer.dataProvider().addFeatures(outputFeatures)
 
-        QgsProject.instance().addMapLayers([outputLayer, ])
+        QgsProject.instance().addMapLayers(
+            [
+                outputLayer,
+            ]
+        )

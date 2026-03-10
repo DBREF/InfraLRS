@@ -19,7 +19,7 @@
  *                                                                         *
  ***************************************************************************/
 """
-from ..utils import debug
+
 from qgis.core import QgsCoordinateTransform, QgsProject
 
 
@@ -32,7 +32,8 @@ class LrsLayerManager(object):
 
     # remove all features
     def clear(self):
-        if not self.layer: return
+        if not self.layer:
+            return
         fids = []
         for feature in self.layer.getFeatures():
             fids.append(feature.id())
@@ -47,7 +48,9 @@ class LrsLayerManager(object):
     # modifies original feature geometry
     def transformFeatures(self, features, crs):
         if crs != self.layer.crs():
-            transform = QgsCoordinateTransform(crs, self.layer.crs(), QgsProject.instance())
+            transform = QgsCoordinateTransform(
+                crs, self.layer.crs(), QgsProject.instance()
+            )
             for feature in features:
                 # feature.geometry().transform(transform)  # does not work
                 geo = feature.geometry()
@@ -89,7 +92,8 @@ class LrsLayerManager(object):
         for feature in features:
             checksum = feature.getChecksum()
             fid = self.featureIds.get(checksum, None)
-            if not fid: raise Exception("Error feature not found")
+            if not fid:
+                raise Exception("Error feature not found")
             changedGeometries[fid] = feature.geometry()
             changedAttributes[fid] = feature.getAttributeMap()
         # debug ( "changedGeometries: %s" % changedGeometries )

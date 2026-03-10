@@ -20,7 +20,13 @@
  ***************************************************************************/
 """
 
-from .error.lrserror import *
+import math
+import sys
+
+from qgis.core import QgsFeature, QgsGeometry, QgsRectangle, QgsSpatialIndex
+from qgis.PyQt.QtCore import QObject
+
+from .utils import LrsUnits, normalizeRouteId
 
 
 # Base class for Lrs and LrsLayer
@@ -32,9 +38,9 @@ class LrsBase(QObject):
         # dictionary of LrsRoute, key is normalized route id
         self.routes = {}  # LrsRoutBase subclasses
         # self.mapUnitsPerMeasureUnit = kwargs.get('mapUnitsPerMeasureUnit',1000.0)
-        self.measureUnit = kwargs.get('measureUnit', LrsUnits.UNKNOWN)
+        self.measureUnit = kwargs.get("measureUnit", LrsUnits.UNKNOWN)
         # LrsLayer has LrsUnits.UNKNOWN, there is no such info available
-        #if self.measureUnit == LrsUnits.UNKNOWN:
+        # if self.measureUnit == LrsUnits.UNKNOWN:
         #    raise Exception("measureUnit not set")
 
         self.partSpatialIndex = None
@@ -49,7 +55,7 @@ class LrsBase(QObject):
     # routeId does not have to be normalized
     def getRouteIfExists(self, routeId):
         normalId = normalizeRouteId(routeId)
-        if not normalId in self.routes:
+        if normalId not in self.routes:
             return None
         return self.routes[normalId]
 
@@ -64,7 +70,8 @@ class LrsBase(QObject):
     # returns ( QgsPointXY, error )
     def eventPointXY(self, routeId, start, tolerance=0, startOffset=0.0):
         error = self.eventValuesError(routeId, start)
-        if error: return None, error
+        if error:
+            return None, error
 
         route = self.getRoute(routeId)
         geo, error = route.eventPointXY(start, tolerance, startOffset)
@@ -72,8 +79,10 @@ class LrsBase(QObject):
 
     # tolerance - minimum missing gap which will be reported as error
     # returns ( QgsMultiPolyline, error )
-    def eventMultiPolyLine(self, routeId, start, end, tolerance=0, oStart=0.0, oEnd=0.0):
-        #debug("eventMultiPolyLine start = %s end = %s" % (start, end))
+    def eventMultiPolyLine(
+        self, routeId, start, end, tolerance=0, oStart=0.0, oEnd=0.0
+    ):
+        # debug("eventMultiPolyLine start = %s end = %s" % (start, end))
         error = self.eventValuesError(routeId, start, end, True)
         if error:
             return None, error
@@ -88,20 +97,20 @@ class LrsBase(QObject):
         error = None
         missing = []
         if routeId is None:
-            missing.append('route')
+            missing.append("route")
         if start is None:
-            missing.append('start measure')
+            missing.append("start measure")
         if linear and end is None:
-            missing.append('end measure')
+            missing.append("end measure")
 
         if missing:
-            error = 'missing %s value' % ' and '.join(missing)
+            error = "missing %s value" % " and ".join(missing)
 
         route = self.getRouteIfExists(routeId)
-        #debug("eventValuesError start = %s end = %s" % (start, end))
+        # debug("eventValuesError start = %s end = %s" % (start, end))
         if not route:
-            error = error + ', ' if error else ''
-            error += 'route not available'
+            error = error + ", " if error else ""
+            error += "route not available"
 
         return error
 
@@ -131,7 +140,12 @@ class LrsBase(QObject):
     def nearestRoutePart(self, point, threshold):
         if not self.partSpatialIndex:
             self.createPartSpatialIndex()
-        rect = QgsRectangle(point.x() - threshold, point.y() - threshold, point.x() + threshold, point.y() + threshold)
+        rect = QgsRectangle(
+            point.x() - threshold,
+            point.y() - threshold,
+            point.x() + threshold,
+            point.y() + threshold,
+        )
         ids = self.partSpatialIndex.intersects(rect)
         # debug ( '%s' % ids )
         nearestRouteId = None
@@ -142,7 +156,9 @@ class LrsBase(QObject):
             route = self.getRoute(routeId)
             part = route.parts[partIdx]
             geo = QgsGeometry.fromPolylineXY(part.polyline)
-            (sqDist, nearestPnt, afterVertex, leftOf) = geo.closestSegmentWithContext(point, 0)
+            (sqDist, nearestPnt, afterVertex, leftOf) = geo.closestSegmentWithContext(
+                point, 0
+            )
             dist = math.sqrt(sqDist)
             if dist < nearestDist:
                 nearestDist = dist

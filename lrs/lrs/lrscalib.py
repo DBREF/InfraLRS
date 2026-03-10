@@ -19,20 +19,30 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 # Import the PyQt and QGIS libraries
-# from PyQt4.QtGui import *
-from .error.lrserror import *
+from qgis.core import (
+    NULL,
+    QgsCoordinateTransform,
+    QgsDistanceArea,
+    QgsField,
+    QgsProject,
+    QgsUnitTypes,
+)
+from qgis.PyQt.QtCore import pyqtSignal
+
 from .lrsbase import LrsBase
+from .lrscalibroute import LrsCalibRoute
 from .lrsline import LrsLine
 from .lrspoint import LrsPoint
-from .lrscalibroute import LrsCalibRoute
+from .utils import getLayerFeature, normalizeRouteId
 
 
 # Main class to keep all data and process them
 class LrsCalib(LrsBase):
-    progressChanged = pyqtSignal(str, float, name='progressChanged')
-    updateErrors = pyqtSignal(dict, name='updateErrors')
-    edited = pyqtSignal(name='edited')
+    progressChanged = pyqtSignal(str, float, name="progressChanged")
+    updateErrors = pyqtSignal(dict, name="updateErrors")
+    edited = pyqtSignal(name="edited")
 
     # progress counts
     CURRENT = 1  # current progress count
@@ -47,12 +57,20 @@ class LrsCalib(LrsBase):
     CALIBRATING_ROUTES = 3
 
     stateLabels = {
-        REGISTERING_LINES: 'Registering lines',
-        REGISTERING_POINTS: 'Registering points',
-        CALIBRATING_ROUTES: 'Calibrating routes',
+        REGISTERING_LINES: "Registering lines",
+        REGISTERING_POINTS: "Registering points",
+        CALIBRATING_ROUTES: "Calibrating routes",
     }
 
-    def __init__(self, lineLayer, lineRouteField, pointLayer, pointRouteField, pointMeasureField, **kwargs):
+    def __init__(
+        self,
+        lineLayer,
+        lineRouteField,
+        pointLayer,
+        pointRouteField,
+        pointMeasureField,
+        **kwargs,
+    ):
         super(LrsCalib, self).__init__(**kwargs)
 
         self.lineLayer = lineLayer
@@ -61,29 +79,31 @@ class LrsCalib(LrsBase):
         self.pointRouteField = pointRouteField
         self.pointMeasureField = pointMeasureField
         # selectionMode: all,include,exclude selection
-        self.selectionMode = kwargs.get('selectionMode', 'all')
+        self.selectionMode = kwargs.get("selectionMode", "all")
         # selection is list of route ids to be included/excluded
         self.selection = []
-        for routeId in kwargs.get('selection', []):
+        for routeId in kwargs.get("selection", []):
             self.selection.append(normalizeRouteId(routeId))
         # max lines gaps snap
-        self.snap = kwargs.get('snap', 0.0)
+        self.snap = kwargs.get("snap", 0.0)
         # threshold - max distance between point and line in canvas CRS units
-        self.threshold = kwargs.get('threshold', 10.0)
-        self.parallelMode = kwargs.get('parallelMode', 'error')
-        self.crs = kwargs.get('crs')
-
+        self.threshold = kwargs.get("threshold", 10.0)
+        self.parallelMode = kwargs.get("parallelMode", "error")
+        self.crs = kwargs.get("crs")
 
         self.distanceArea = QgsDistanceArea()
         # QgsDistanceArea.setSourceCrs( QgsCoordinateReferenceSystem ) is missing in SIP in at least QGIS 2.0
-        self.distanceArea.setSourceCrs(self.crs, QgsProject.instance().transformContext())
+        self.distanceArea.setSourceCrs(
+            self.crs, QgsProject.instance().transformContext()
+        )
         if self.crs.mapUnits() == QgsUnitTypes.DistanceDegrees:
             ellipsoid = self.crs.ellipsoidAcronym()
-            if not ellipsoid: ellipsoid = "WGS84"
+            if not ellipsoid:
+                ellipsoid = "WGS84"
             self.distanceArea.setEllipsoid(ellipsoid)
 
         # extrapolate LRS before/after calibration points
-        self.extrapolate = kwargs.get('extrapolate', False)
+        self.extrapolate = kwargs.get("extrapolate", False)
 
         # stored line route id QgsField to know type
         self.routeField = None
@@ -107,7 +127,7 @@ class LrsCalib(LrsBase):
 
         self.progressCounts = {}
 
-        # Numbers of features/lines/points currently not used because did not 
+        # Numbers of features/lines/points currently not used because did not
         # correspond well to list/layer of errors
         self.stats = {}  # statistics
         self.statsNames = (
@@ -121,21 +141,23 @@ class LrsCalib(LrsBase):
             # ( 'pointsIncluded', 'Number of included points' ), # selected
             # ( 'pointsOk', 'Number of included points successfully used in LRS' ),
             # ( 'pointsError', 'Number of included points with error' ),
-            ('length', 'Total length of all lines'),
-            ('lengthIncluded', 'Length of included lines'),
-            ('lengthOk', 'Length of successfully created LRS'),
+            ("length", "Total length of all lines"),
+            ("lengthIncluded", "Length of included lines"),
+            ("lengthOk", "Length of successfully created LRS"),
             # ( 'lengthError', 'Length of included lines without LRS' ),
         )
 
         self.lineTransform = None
         if self.crs and self.crs != lineLayer.crs():
-            self.lineTransform = QgsCoordinateTransform(lineLayer.crs(), self.crs,
-                                                        QgsProject.instance())
+            self.lineTransform = QgsCoordinateTransform(
+                lineLayer.crs(), self.crs, QgsProject.instance()
+            )
 
         self.pointTransform = None
         if self.crs and self.crs != pointLayer.crs():
-            self.pointTransform = QgsCoordinateTransform(pointLayer.crs(), self.crs,
-                                                         QgsProject.instance())
+            self.pointTransform = QgsCoordinateTransform(
+                pointLayer.crs(), self.crs, QgsProject.instance()
+            )
 
         self.wasEdited = False  # true if layers were edited since calibration
 
@@ -145,13 +167,15 @@ class LrsCalib(LrsBase):
         self.disconnect()
 
     def pointLayerDisconnect(self):
-        if not self.pointLayer: return
+        if not self.pointLayer:
+            return
         self.pointLayerEditingDisconnect()
         self.pointLayer.editingStarted.disconnect(self.pointLayerEditingStarted)
         self.pointLayer.editingStopped.disconnect(self.pointLayerEditingStopped)
 
     def lineLayerDisconnect(self):
-        if not self.lineLayer: return
+        if not self.lineLayer:
+            return
         self.lineLayerEditingDisconnect()
         self.lineLayer.editingStarted.disconnect(self.lineLayerEditingStarted)
         self.lineLayer.editingStopped.disconnect(self.lineLayerEditingStopped)
@@ -162,7 +186,6 @@ class LrsCalib(LrsBase):
         self.lineLayerDisconnect()
 
     def layersWillBeRemoved(self, layerIdList):
-        project = QgsProject.instance()
         for id in layerIdList:
             if self.pointLayer and self.pointLayer.id() == id:
                 self.pointLayerDisconnect()
@@ -178,19 +201,26 @@ class LrsCalib(LrsBase):
         normalId = normalizeRouteId(routeId)
         # debug ( 'normalId = %s orig type = %s' % (normalId, type(routeId) ) )
         if normalId not in self.routes:
-            self.routes[normalId] = LrsCalibRoute(self.lineLayer, routeId, self.snap, self.threshold, self.crs,
-                                                  self.measureUnit, self.distanceArea, parallelMode=self.parallelMode)
+            self.routes[normalId] = LrsCalibRoute(
+                self.lineLayer,
+                routeId,
+                self.snap,
+                self.threshold,
+                self.crs,
+                self.measureUnit,
+                self.distanceArea,
+                parallelMode=self.parallelMode,
+            )
         return self.routes[normalId]
-
 
     # test if process route according to selectionMode and selection
     def routeIdSelected(self, routeId):
         routeId = normalizeRouteId(routeId)
-        if self.selectionMode == 'all':
+        if self.selectionMode == "all":
             return True
-        elif self.selectionMode == 'include':
+        elif self.selectionMode == "include":
             return routeId in self.selection
-        elif self.selectionMode == 'exclude':
+        elif self.selectionMode == "exclude":
             return routeId not in self.selection
 
     # ------------------- GENERATE (CALIBRATE) -------------------
@@ -205,7 +235,9 @@ class LrsCalib(LrsBase):
     # increase progress, called after each step (line, point...)
     def progressStep(self, state):
         self.progressCounts[self.CURRENT] = self.progressCounts.get(self.CURRENT, 0) + 1
-        percent = 100 * self.progressCounts[self.CURRENT] / self.progressCounts[self.TOTAL]
+        percent = (
+            100 * self.progressCounts[self.CURRENT] / self.progressCounts[self.TOTAL]
+        )
         # debug ( "percent = %s %s / %s" % (percent, self.progressCounts[self.CURRENT], self.progressCounts[self.TOTAL] ) )
         self.progressChanged.emit(self.stateLabels[state], percent)
 
@@ -222,7 +254,13 @@ class LrsCalib(LrsBase):
             self.stats[s[0]] = 0
 
         field = self.lineLayer.fields().field(self.lineRouteField)
-        self.routeField = QgsField(field.name(), field.type(), field.typeName(), field.length(), field.precision())
+        self.routeField = QgsField(
+            field.name(),
+            field.type(),
+            field.typeName(),
+            field.length(),
+            field.precision(),
+        )
 
         self.progressCounts = {}
         # we don't know progressTotal at the beginning, but we can estimate it
@@ -241,7 +279,7 @@ class LrsCalib(LrsBase):
             # count stats
         for route in self.routes.values():
             # self.stats['pointsOk'] += len ( route.getGoodMilestones() )
-            self.stats['lengthOk'] += route.getGoodLength()
+            self.stats["lengthOk"] += route.getGoodLength()
 
             # self.stats['pointsError'] = self.stats['pointsIncluded'] - self.stats['pointsOk']
 
@@ -252,7 +290,8 @@ class LrsCalib(LrsBase):
 
     def registerLineFeature(self, feature):
         routeId = feature[self.lineRouteField]
-        if routeId == '' or routeId == NULL: routeId = None
+        if routeId == "" or routeId == NULL:
+            routeId = None
         # debug ( "fid = %s routeId = %s" % ( feature.id(), routeId ) )
 
         if not self.routeIdSelected(routeId):
@@ -283,11 +322,11 @@ class LrsCalib(LrsBase):
             length = 0
             if feature.geometry():
                 length = self.distanceArea.measureLength(feature.geometry())
-            self.stats['length'] += length
+            self.stats["length"] += length
             if line:
                 # self.stats['lineFeaturesIncluded'] += 1
                 # self.stats['linesIncluded'] += line.getNumParts()
-                self.stats['lengthIncluded'] += length
+                self.stats["lengthIncluded"] += length
             self.progressStep(self.REGISTERING_LINES)
             # precise number of routes
         self.progressCounts[self.NROUTES] = len(self.routes)
@@ -296,14 +335,15 @@ class LrsCalib(LrsBase):
     # returns LrsPoint
     def registerPointFeature(self, feature):
         routeId = feature[self.pointRouteField]
-        if routeId == '' or routeId == NULL:
+        if routeId == "" or routeId == NULL:
             routeId = None
 
         if not self.routeIdSelected(routeId):
             return None
 
         measure = feature[self.pointMeasureField]
-        if measure == NULL: measure = None
+        if measure == NULL:
+            measure = None
         if measure is not None:
             # convert to float to don't care later about operations with integers
             measure = float(measure)
@@ -327,7 +367,7 @@ class LrsCalib(LrsBase):
 
     def registerPoints(self):
         for feature in self.pointLayer.getFeatures():
-            point = self.registerPointFeature(feature)
+            self.registerPointFeature(feature)
             # self.stats['pointFeatures'] += 1
             # if point:
             # self.stats['pointFeaturesIncluded'] += 1
@@ -382,10 +422,12 @@ class LrsCalib(LrsBase):
         # QObject.connect(self.pointEditBuffer, SIGNAL("geometryChanged(QgsFeatureId, QgsGeometry &)"),
         #                self.pointGeometryChanged)
         # Not working:
-        #self.pointEditBuffer.geometryChanged["QgsFeatureId, QgsGeometry"].connect(self.pointGeometryChanged)
+        # self.pointEditBuffer.geometryChanged["QgsFeatureId, QgsGeometry"].connect(self.pointGeometryChanged)
         # Trying simple connect hoping that it works also on Windows
         self.pointEditBuffer.geometryChanged.connect(self.pointGeometryChanged)
-        self.pointEditBuffer.attributeValueChanged.connect(self.pointAttributeValueChanged)
+        self.pointEditBuffer.attributeValueChanged.connect(
+            self.pointAttributeValueChanged
+        )
 
     def pointLayerEditingStopped(self):
         self.pointEditBuffer = None
@@ -395,7 +437,9 @@ class LrsCalib(LrsBase):
             self.pointEditBuffer.featureAdded.disconnect(self.pointFeatureAdded)
             self.pointEditBuffer.featureDeleted.disconnect(self.pointFeatureDeleted)
             self.pointEditBuffer.geometryChanged.disconnect(self.pointGeometryChanged)
-            self.pointEditBuffer.attributeValueChanged.disconnect(self.pointAttributeValueChanged)
+            self.pointEditBuffer.attributeValueChanged.disconnect(
+                self.pointAttributeValueChanged
+            )
 
     def lineLayerEditingStarted(self):
         self.lineEditBuffer = self.lineLayer.editBuffer()
@@ -406,10 +450,12 @@ class LrsCalib(LrsBase):
         # QObject.connect(self.lineEditBuffer, SIGNAL("geometryChanged(QgsFeatureId, QgsGeometry &)"),
         #                self.lineGeometryChanged)
         # Not working:
-        #self.lineEditBuffer.geometryChanged["QgsFeatureId, QgsGeometry"].connect(self.lineGeometryChanged)
+        # self.lineEditBuffer.geometryChanged["QgsFeatureId, QgsGeometry"].connect(self.lineGeometryChanged)
         # Trying simple connect hoping that it works also on Windows
         self.lineEditBuffer.geometryChanged.connect(self.lineGeometryChanged)
-        self.lineEditBuffer.attributeValueChanged.connect(self.lineAttributeValueChanged)
+        self.lineEditBuffer.attributeValueChanged.connect(
+            self.lineAttributeValueChanged
+        )
 
     def lineLayerEditingStopped(self):
         self.lineEditBuffer = None
@@ -419,7 +465,9 @@ class LrsCalib(LrsBase):
             self.lineEditBuffer.featureAdded.disconnect(self.lineFeatureAdded)
             self.lineEditBuffer.featureDeleted.disconnect(self.lineFeatureDeleted)
             self.lineEditBuffer.geometryChanged.disconnect(self.lineGeometryChanged)
-            self.lineEditBuffer.attributeValueChanged.disconnect(self.lineAttributeValueChanged)
+            self.lineEditBuffer.attributeValueChanged.disconnect(
+                self.lineAttributeValueChanged
+            )
 
     def setEdited(self):
         self.wasEdited = True
@@ -429,11 +477,11 @@ class LrsCalib(LrsBase):
         return self.wasEdited
 
     def emitUpdateErrors(self, errorUpdates):
-        errorUpdates['crs'] = self.crs
+        errorUpdates["crs"] = self.crs
         self.updateErrors.emit(errorUpdates)
 
     # Warning: featureAdded is called first with temporary (negative fid)
-    # then, when changes are commited, featureDeleted is called with that 
+    # then, when changes are commited, featureDeleted is called with that
     # temporary id and featureAdded with real new id,
     # if changes are rollbacked, only featureDeleted is called
 
@@ -444,7 +492,8 @@ class LrsCalib(LrsBase):
         self.setEdited()
         feature = getLayerFeature(self.pointLayer, fid)
         point = self.registerPointFeature(feature)  # returns LrsPoint
-        if not point: return  # route id not in selection
+        if not point:
+            return  # route id not in selection
 
         route = self.getRoute(point.routeId)
         errorUpdates = route.calibrateAndGetUpdates(self.extrapolate)
@@ -455,7 +504,8 @@ class LrsCalib(LrsBase):
         self.setEdited()
         # deleted feature cannot be read anymore from layer
         point = self.points.get(fid)
-        if not point: return  # route id not in selection
+        if not point:
+            return  # route id not in selection
 
         route = self.getRoute(point.routeId)
         self.unregisterPointByFid(fid)
@@ -468,7 +518,8 @@ class LrsCalib(LrsBase):
 
         # remove old
         point = self.points.get(fid)
-        if not point: return  # route id not in selection
+        if not point:
+            return  # route id not in selection
 
         route = self.getRoute(point.routeId)
         self.unregisterPointByFid(fid)
@@ -514,7 +565,8 @@ class LrsCalib(LrsBase):
         self.setEdited()
         feature = getLayerFeature(self.lineLayer, fid)
         line = self.registerLineFeature(feature)  # returns LrsLine
-        if not line: return  # route id not in selection
+        if not line:
+            return  # route id not in selection
 
         route = self.getRoute(line.routeId)
         errorUpdates = route.calibrateAndGetUpdates(self.extrapolate)
@@ -525,7 +577,8 @@ class LrsCalib(LrsBase):
         # deleted feature cannot be read anymore from layer
         self.setEdited()
         line = self.lines.get(fid)
-        if not line: return  # route id not in selection
+        if not line:
+            return  # route id not in selection
 
         route = self.getRoute(line.routeId)
         self.unregisterLineByFid(fid)
@@ -538,7 +591,8 @@ class LrsCalib(LrsBase):
 
         # remove old
         line = self.lines.get(fid)
-        if not line: return  # route id not in selection
+        if not line:
+            return  # route id not in selection
 
         route = self.getRoute(line.routeId)
         self.unregisterLineByFid(fid)
@@ -584,7 +638,7 @@ class LrsCalib(LrsBase):
         return "<tr><td>%s</td> <td>%s</td></tr>" % (label, value)
 
     def getStatsHtml(self):
-        html = '''<html><head>
+        html = """<html><head>
                     <style type="text/css">
                       table {
                         border: 1px solid gray;
@@ -599,15 +653,15 @@ class LrsCalib(LrsBase):
                         font-size: 10pt;
                       }
                     </style>
-                  </head><body>'''
+                  </head><body>"""
         html += '<table border="1">'
 
         for s in self.statsNames:
             html += self.getStatsHtmlRow(s[0], s[1])
 
-        html += '</table>'
-        html += '<p>Lengths in map units.'
-        html += '</body></html>'
+        html += "</table>"
+        html += "<p>Lengths in map units."
+        html += "</body></html>"
         return html
 
     # get statistics

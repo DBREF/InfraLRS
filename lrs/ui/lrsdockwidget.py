@@ -19,8 +19,36 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtCore import QVariant, QCoreApplication
+
+from qgis.core import (
+    QgsApplication,
+    QgsCoordinateTransform,
+    QgsGeometry,
+    QgsPoint,
+    QgsProject,
+    QgsRectangle,
+    QgsSettings,
+    QgsUnitTypes,
+    QgsVectorLayer,
+    QgsWkbTypes,
+)
 from qgis.gui import QgsHighlight
+from qgis.PyQt.QtCore import (
+    QByteArray,
+    QCoreApplication,
+    QFileInfo,
+    QRegExp,
+    QSortFilterProxyModel,
+    Qt,
+    QUrl,
+)
+from qgis.PyQt.QtGui import QColor, QRegExpValidator
+from qgis.PyQt.QtWidgets import (
+    QAbstractItemView,
+    QDialogButtonBox,
+    QDockWidget,
+    QTableView,
+)
 
 from ..lrs.error.lrserrorlayermanager import LrsErrorLayerManager
 from ..lrs.error.lrserrorlinelayer import LrsErrorLineLayer
@@ -29,18 +57,28 @@ from ..lrs.error.lrserrorpointlayer import LrsErrorPointLayer
 from ..lrs.error.lrserrorvisualizer import LrsErrorVisualizer
 from ..lrs.error.lrsqualitylayer import LrsQualityLayer
 from ..lrs.error.lrsqualitylayermanager import LrsQualityLayerManager
-from ..lrs.lrsevents import LrsEvents
 from ..lrs.lrscalib import LrsCalib
+from ..lrs.lrsevents import LrsEvents
 from ..lrs.lrslayer import LrsLayer
-from ..lrs.lrsoutput import LrsOutput
 from ..lrs.lrsmeasures import LrsMeasures
+from ..lrs.lrsoutput import LrsOutput
+from ..lrs.utils import (
+    ALL_FEATURES,
+    PROJECT_PLUGIN_NAME,
+    QVARIANT_NUMBER_TYPE_LIST,
+    SELECTED_FEATURES,
+    LrsUnits,
+    crsString,
+    formatMeasure,
+    getProjectCrs,
+    isProjectCrsEnabled,
+)
 from .lrscombomanager import LrsComboManager
-from .lrscombomanagerbase import *
 from .lrsfieldcombomanager import LrsFieldComboManager
 from .lrslayercombomanager import LrsLayerComboManager
-from .lrsselectiondialog import *
+from .lrsselectiondialog import LrsSelectionDialog
 from .lrsunitcombomanager import LrsUnitComboManager
-from .lrswidgetmanager import *
+from .lrswidgetmanager import LrsWidgetManager
 from .ui_lrsdockwidget import Ui_LrsDockWidget
 
 try:
@@ -51,7 +89,7 @@ try:
     psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
     psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
     havePostgis = True
-except:
+except ImportError:
     havePostgis = False
 
 
@@ -71,7 +109,10 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.qualityLayer = None
         self.qualityLayerManager = None
 
-        self.pluginDir = QFileInfo(QgsApplication.qgisUserDatabaseFilePath()).path() + "/python/plugins/lrs"
+        self.pluginDir = (
+            QFileInfo(QgsApplication.qgisUserDatabaseFilePath()).path()
+            + "/python/plugins/lrs"
+        )
 
         super(LrsDockWidget, self).__init__(parent)
 
@@ -85,18 +126,32 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.tabWidget.currentChanged.connect(self.tabChanged)
 
         # ------------- locate, events, measure have synchronized lrs layer and route field --------
-        lrsLayerComboList = [self.locateLrsLayerCombo, self.eventsLrsLayerCombo, self.measureLrsLayerCombo]
+        lrsLayerComboList = [
+            self.locateLrsLayerCombo,
+            self.eventsLrsLayerCombo,
+            self.measureLrsLayerCombo,
+        ]
 
-        self.lrsLayerCM = LrsLayerComboManager(lrsLayerComboList,
-                                               geometryType=QgsWkbTypes.LineGeometry,
-                                               geometryHasM=True, settingsName='lrsLayerId')
+        self.lrsLayerCM = LrsLayerComboManager(
+            lrsLayerComboList,
+            geometryType=QgsWkbTypes.LineGeometry,
+            geometryHasM=True,
+            settingsName="lrsLayerId",
+        )
 
         self.lrsLayerCM.layerChanged.connect(self.lrsLayerChanged)
 
-        lrsRouteFieldComboList = [self.locateLrsRouteFieldCombo, self.eventsLrsRouteFieldCombo,
-                                  self.measureLrsRouteFieldCombo]
-        self.lrsRouteFieldCM = LrsFieldComboManager(lrsRouteFieldComboList, self.lrsLayerCM,
-                                                    settingsName='lrsRouteField', allowNone=True)
+        lrsRouteFieldComboList = [
+            self.locateLrsRouteFieldCombo,
+            self.eventsLrsRouteFieldCombo,
+            self.measureLrsRouteFieldCombo,
+        ]
+        self.lrsRouteFieldCM = LrsFieldComboManager(
+            lrsRouteFieldComboList,
+            self.lrsLayerCM,
+            settingsName="lrsRouteField",
+            allowNone=True,
+        )
 
         # using activated() which is called on user interaction to avoid be called 3 times from each combo
         # self.lrsRouteFieldCM.fieldNameChanged.connect(self.lrsRouteFieldNameChanged)
@@ -104,9 +159,14 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
 
         # ----------------------- locateTab ---------------------------
         self.locateRouteCM = LrsComboManager(self.locateRouteCombo)
-        self.locateHighlightWM = LrsWidgetManager(self.locateHighlightCheckBox, settingsName='locateHighlight',
-                                                  defaultValue=True)
-        self.locateBufferWM = LrsWidgetManager(self.locateBufferSpin, settingsName='locateBuffer', defaultValue=200.0)
+        self.locateHighlightWM = LrsWidgetManager(
+            self.locateHighlightCheckBox,
+            settingsName="locateHighlight",
+            defaultValue=True,
+        )
+        self.locateBufferWM = LrsWidgetManager(
+            self.locateBufferSpin, settingsName="locateBuffer", defaultValue=200.0
+        )
 
         self.locateRouteCombo.currentIndexChanged.connect(self.locateRouteChanged)
         self.locateMeasureSpin.valueChanged.connect(self.resetLocateEvent)
@@ -114,49 +174,95 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.locateCenterButton.clicked.connect(self.locateCenter)
         self.locateHighlightCheckBox.stateChanged.connect(self.locateHighlightChanged)
         self.locateZoomButton.clicked.connect(self.locateZoom)
-        self.locateHelpButton.clicked.connect(lambda: self.showHelp('locate'))
+        self.locateHelpButton.clicked.connect(lambda: self.showHelp("locate"))
         self.resetLocateRoutes()
         self.locateProgressBar.hide()
 
         # ----------------------- eventsTab ---------------------------
-        self.eventsLayerCM = LrsLayerComboManager(self.eventsLayerCombo, settingsName='eventsLayerId')
-        self.eventsRouteFieldCM = LrsFieldComboManager(self.eventsRouteFieldCombo, self.eventsLayerCM,
-                                                       settingsName='eventsRouteField')
-        self.eventsMeasureStartFieldCM = LrsFieldComboManager(self.eventsMeasureStartFieldCombo, self.eventsLayerCM,
-                                                              types=QVARIANT_NUMBER_TYPE_LIST,
-                                                              settingsName='eventsMeasureStartField')
-        self.eventsMeasureEndFieldCM = LrsFieldComboManager(self.eventsMeasureEndFieldCombo, self.eventsLayerCM,
-                                                            types=QVARIANT_NUMBER_TYPE_LIST, allowNone=True,
-                                                            settingsName='eventsMeasureEndField')
+        self.eventsLayerCM = LrsLayerComboManager(
+            self.eventsLayerCombo, settingsName="eventsLayerId"
+        )
+        self.eventsRouteFieldCM = LrsFieldComboManager(
+            self.eventsRouteFieldCombo,
+            self.eventsLayerCM,
+            settingsName="eventsRouteField",
+        )
+        self.eventsMeasureStartFieldCM = LrsFieldComboManager(
+            self.eventsMeasureStartFieldCombo,
+            self.eventsLayerCM,
+            types=QVARIANT_NUMBER_TYPE_LIST,
+            settingsName="eventsMeasureStartField",
+        )
+        self.eventsMeasureEndFieldCM = LrsFieldComboManager(
+            self.eventsMeasureEndFieldCombo,
+            self.eventsLayerCM,
+            types=QVARIANT_NUMBER_TYPE_LIST,
+            allowNone=True,
+            settingsName="eventsMeasureEndField",
+        )
         # Offset values
-        self.eventsOffsetStartFieldCM = LrsFieldComboManager(self.eventsOffsetStartFieldCombo, self.eventsLayerCM,
-                                                              types=QVARIANT_NUMBER_TYPE_LIST, allowNone=True,
-                                                              settingsName='eventsOffsetStartField')
-        self.eventsOffsetEndFieldCM = LrsFieldComboManager(self.eventsOffsetEndFieldCombo, self.eventsLayerCM,
-                                                            types=QVARIANT_NUMBER_TYPE_LIST, allowNone=True,
-                                                            settingsName='eventsOffsetEndField')
+        self.eventsOffsetStartFieldCM = LrsFieldComboManager(
+            self.eventsOffsetStartFieldCombo,
+            self.eventsLayerCM,
+            types=QVARIANT_NUMBER_TYPE_LIST,
+            allowNone=True,
+            settingsName="eventsOffsetStartField",
+        )
+        self.eventsOffsetEndFieldCM = LrsFieldComboManager(
+            self.eventsOffsetEndFieldCombo,
+            self.eventsLayerCM,
+            types=QVARIANT_NUMBER_TYPE_LIST,
+            allowNone=True,
+            settingsName="eventsOffsetEndField",
+        )
 
-        self.eventsFeaturesSelectCM = LrsComboManager(self.eventsFeaturesSelectCombo, options=(
-            (ALL_FEATURES, self.tr('All features')), (SELECTED_FEATURES, self.tr('Selected features'))),
-                                                      defaultValue=ALL_FEATURES, settingsName='eventsFeaturesSelect')
+        self.eventsFeaturesSelectCM = LrsComboManager(
+            self.eventsFeaturesSelectCombo,
+            options=(
+                (ALL_FEATURES, self.tr("All features")),
+                (SELECTED_FEATURES, self.tr("Selected features")),
+            ),
+            defaultValue=ALL_FEATURES,
+            settingsName="eventsFeaturesSelect",
+        )
 
-        self.eventsOutputNameWM = LrsWidgetManager(self.eventsOutputNameLineEdit, settingsName='eventsOutputName',
-                                                   defaultValue='LRS events')
-        self.eventsErrorFieldWM = LrsWidgetManager(self.eventsErrorFieldLineEdit, settingsName='eventsErrorField',
-                                                   defaultValue='lrs_err')
-        validator = QRegExpValidator(QRegExp('[A-Za-z_][A-Za-z0-9_]+'), None)
+        self.eventsOutputNameWM = LrsWidgetManager(
+            self.eventsOutputNameLineEdit,
+            settingsName="eventsOutputName",
+            defaultValue="LRS events",
+        )
+        self.eventsErrorFieldWM = LrsWidgetManager(
+            self.eventsErrorFieldLineEdit,
+            settingsName="eventsErrorField",
+            defaultValue="lrs_err",
+        )
+        validator = QRegExpValidator(QRegExp("[A-Za-z_][A-Za-z0-9_]+"), None)
         self.eventsErrorFieldLineEdit.setValidator(validator)
 
-        self.eventsButtonBox.button(QDialogButtonBox.Ok).clicked.connect(self.createEvents)
-        self.eventsButtonBox.button(QDialogButtonBox.Reset).clicked.connect(self.resetEventsOptionsAndWrite)
-        self.eventsButtonBox.button(QDialogButtonBox.Help).clicked.connect(lambda: self.showHelp('events'))
+        self.eventsButtonBox.button(QDialogButtonBox.Ok).clicked.connect(
+            self.createEvents
+        )
+        self.eventsButtonBox.button(QDialogButtonBox.Reset).clicked.connect(
+            self.resetEventsOptionsAndWrite
+        )
+        self.eventsButtonBox.button(QDialogButtonBox.Help).clicked.connect(
+            lambda: self.showHelp("events")
+        )
         self.eventsLayerCombo.currentIndexChanged.connect(self.resetEventsButtons)
         self.eventsRouteFieldCombo.currentIndexChanged.connect(self.resetEventsButtons)
-        self.eventsMeasureStartFieldCombo.currentIndexChanged.connect(self.resetEventsButtons)
-        self.eventsMeasureEndFieldCombo.currentIndexChanged.connect(self.resetEventsButtons)
+        self.eventsMeasureStartFieldCombo.currentIndexChanged.connect(
+            self.resetEventsButtons
+        )
+        self.eventsMeasureEndFieldCombo.currentIndexChanged.connect(
+            self.resetEventsButtons
+        )
         # Offset
-        self.eventsOffsetStartFieldCombo.currentIndexChanged.connect(self.resetEventsButtons)
-        self.eventsOffsetEndFieldCombo.currentIndexChanged.connect(self.resetEventsButtons)
+        self.eventsOffsetStartFieldCombo.currentIndexChanged.connect(
+            self.resetEventsButtons
+        )
+        self.eventsOffsetEndFieldCombo.currentIndexChanged.connect(
+            self.resetEventsButtons
+        )
         self.eventsOutputNameLineEdit.textEdited.connect(self.resetEventsButtons)
         self.resetEventsOptions()
         self.resetEventsButtons()
@@ -165,31 +271,57 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.eventsLayerCM.reload()
 
         # ----------------------- measureTab ---------------------------
-        self.measureLayerCM = LrsLayerComboManager(self.measureLayerCombo, geometryType=QgsWkbTypes.PointGeometry,
-                                                   settingsName='measureLayerId')
-        self.measureRouteFieldCM = LrsFieldComboManager(self.measureRouteFieldCombo, self.measureLayerCM,
-                                                        allowNone=True, settingsName='measureRouteField')
-        self.measureThresholdWM = LrsWidgetManager(self.measureThresholdSpin, settingsName='measureThreshold',
-                                                   defaultValue=100.0)
-        self.measureOutputNameWM = LrsWidgetManager(self.measureOutputNameLineEdit, settingsName='measureOutputName',
-                                                    defaultValue='LRS measure')
+        self.measureLayerCM = LrsLayerComboManager(
+            self.measureLayerCombo,
+            geometryType=QgsWkbTypes.PointGeometry,
+            settingsName="measureLayerId",
+        )
+        self.measureRouteFieldCM = LrsFieldComboManager(
+            self.measureRouteFieldCombo,
+            self.measureLayerCM,
+            allowNone=True,
+            settingsName="measureRouteField",
+        )
+        self.measureThresholdWM = LrsWidgetManager(
+            self.measureThresholdSpin,
+            settingsName="measureThreshold",
+            defaultValue=100.0,
+        )
+        self.measureOutputNameWM = LrsWidgetManager(
+            self.measureOutputNameLineEdit,
+            settingsName="measureOutputName",
+            defaultValue="LRS measure",
+        )
 
-        self.measureOutputRouteFieldWM = LrsWidgetManager(self.measureOutputRouteFieldLineEdit,
-                                                          settingsName='measureOutputRouteField',
-                                                          defaultValue='route')
-        validator = QRegExpValidator(QRegExp('[A-Za-z_][A-Za-z0-9_]+'), None)
+        self.measureOutputRouteFieldWM = LrsWidgetManager(
+            self.measureOutputRouteFieldLineEdit,
+            settingsName="measureOutputRouteField",
+            defaultValue="route",
+        )
+        validator = QRegExpValidator(QRegExp("[A-Za-z_][A-Za-z0-9_]+"), None)
         self.measureOutputRouteFieldLineEdit.setValidator(validator)
 
-        self.measureMeasureFieldWM = LrsWidgetManager(self.measureMeasureFieldLineEdit,
-                                                      settingsName='measureMeasureField', defaultValue='measure')
+        self.measureMeasureFieldWM = LrsWidgetManager(
+            self.measureMeasureFieldLineEdit,
+            settingsName="measureMeasureField",
+            defaultValue="measure",
+        )
         self.measureMeasureFieldLineEdit.setValidator(validator)
 
-        self.measureButtonBox.button(QDialogButtonBox.Ok).clicked.connect(self.calculateMeasures)
-        self.measureButtonBox.button(QDialogButtonBox.Reset).clicked.connect(self.resetMeasureOptionsAndWrite)
-        self.measureButtonBox.button(QDialogButtonBox.Help).clicked.connect(lambda: self.showHelp('measures'))
+        self.measureButtonBox.button(QDialogButtonBox.Ok).clicked.connect(
+            self.calculateMeasures
+        )
+        self.measureButtonBox.button(QDialogButtonBox.Reset).clicked.connect(
+            self.resetMeasureOptionsAndWrite
+        )
+        self.measureButtonBox.button(QDialogButtonBox.Help).clicked.connect(
+            lambda: self.showHelp("measures")
+        )
         self.measureLayerCombo.currentIndexChanged.connect(self.resetMeasureButtons)
         self.measureOutputNameLineEdit.textEdited.connect(self.resetMeasureButtons)
-        self.measureOutputRouteFieldLineEdit.textEdited.connect(self.resetMeasureButtons)
+        self.measureOutputRouteFieldLineEdit.textEdited.connect(
+            self.resetMeasureButtons
+        )
         self.measureMeasureFieldLineEdit.textEdited.connect(self.resetMeasureButtons)
         self.resetMeasureOptions()
         self.resetMeasureButtons()
@@ -198,51 +330,102 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.measureLayerCM.reload()
 
         # ------------- genTab -----------------------
-        self.genLineLayerCM = LrsLayerComboManager(self.genLineLayerCombo, geometryType=QgsWkbTypes.LineGeometry,
-                                                   settingsName='lineLayerId')
-        self.genLineRouteFieldCM = LrsFieldComboManager(self.genLineRouteFieldCombo, self.genLineLayerCM,
-                                                        settingsName='lineRouteField')
-        self.genPointLayerCM = LrsLayerComboManager(self.genPointLayerCombo, geometryType=QgsWkbTypes.PointGeometry,
-                                                    settingsName='pointLayerId')
-        self.genPointRouteFieldCM = LrsFieldComboManager(self.genPointRouteFieldCombo, self.genPointLayerCM,
-                                                         settingsName='pointRouteField')
-        self.genPointMeasureFieldCM = LrsFieldComboManager(self.genPointMeasureFieldCombo, self.genPointLayerCM,
-                                                           types=QVARIANT_NUMBER_TYPE_LIST,
-                                                           settingsName='pointMeasureField')
+        self.genLineLayerCM = LrsLayerComboManager(
+            self.genLineLayerCombo,
+            geometryType=QgsWkbTypes.LineGeometry,
+            settingsName="lineLayerId",
+        )
+        self.genLineRouteFieldCM = LrsFieldComboManager(
+            self.genLineRouteFieldCombo,
+            self.genLineLayerCM,
+            settingsName="lineRouteField",
+        )
+        self.genPointLayerCM = LrsLayerComboManager(
+            self.genPointLayerCombo,
+            geometryType=QgsWkbTypes.PointGeometry,
+            settingsName="pointLayerId",
+        )
+        self.genPointRouteFieldCM = LrsFieldComboManager(
+            self.genPointRouteFieldCombo,
+            self.genPointLayerCM,
+            settingsName="pointRouteField",
+        )
+        self.genPointMeasureFieldCM = LrsFieldComboManager(
+            self.genPointMeasureFieldCombo,
+            self.genPointLayerCM,
+            types=QVARIANT_NUMBER_TYPE_LIST,
+            settingsName="pointMeasureField",
+        )
 
-        self.genMeasureUnitCM = LrsUnitComboManager(self.genMeasureUnitCombo, settingsName='measureUnit',
-                                                    defaultValue=LrsUnits.KILOMETER)
+        self.genMeasureUnitCM = LrsUnitComboManager(
+            self.genMeasureUnitCombo,
+            settingsName="measureUnit",
+            defaultValue=LrsUnits.KILOMETER,
+        )
 
-        self.genSelectionModeCM = LrsComboManager(self.genSelectionModeCombo, options=(
-            ('all', self.tr('All routes')), ('include', self.tr('Include routes')),
-            ('exclude', self.tr('Exclude routes'))),
-                                                  defaultValue='all', settingsName='selectionMode')
-        self.genSelectionWM = LrsWidgetManager(self.genSelectionLineEdit, settingsName='selection')
+        self.genSelectionModeCM = LrsComboManager(
+            self.genSelectionModeCombo,
+            options=(
+                ("all", self.tr("All routes")),
+                ("include", self.tr("Include routes")),
+                ("exclude", self.tr("Exclude routes")),
+            ),
+            defaultValue="all",
+            settingsName="selectionMode",
+        )
+        self.genSelectionWM = LrsWidgetManager(
+            self.genSelectionLineEdit, settingsName="selection"
+        )
 
-        self.genThresholdWM = LrsWidgetManager(self.genThresholdSpin, settingsName='threshold', defaultValue=100.0)
-        self.genSnapWM = LrsWidgetManager(self.genSnapSpin, settingsName='snap', defaultValue=0.0)
-        self.genParallelModeCM = LrsComboManager(self.genParallelModeCombo, options=(
-            ('error', self.tr('Mark as errors')), ('span', self.tr('Span by straight line')),
-            ('exclude', self.tr('Exclude'))), defaultValue='error', settingsName='parallelMode')
-        self.genExtrapolateWM = LrsWidgetManager(self.genExtrapolateCheckBox, settingsName='extrapolate',
-                                                 defaultValue=False)
+        self.genThresholdWM = LrsWidgetManager(
+            self.genThresholdSpin, settingsName="threshold", defaultValue=100.0
+        )
+        self.genSnapWM = LrsWidgetManager(
+            self.genSnapSpin, settingsName="snap", defaultValue=0.0
+        )
+        self.genParallelModeCM = LrsComboManager(
+            self.genParallelModeCombo,
+            options=(
+                ("error", self.tr("Mark as errors")),
+                ("span", self.tr("Span by straight line")),
+                ("exclude", self.tr("Exclude")),
+            ),
+            defaultValue="error",
+            settingsName="parallelMode",
+        )
+        self.genExtrapolateWM = LrsWidgetManager(
+            self.genExtrapolateCheckBox, settingsName="extrapolate", defaultValue=False
+        )
 
-        self.genOutputNameWM = LrsWidgetManager(self.genOutputNameLineEdit, settingsName='lrsOutputName',
-                                                defaultValue='LRS')
+        self.genOutputNameWM = LrsWidgetManager(
+            self.genOutputNameLineEdit, settingsName="lrsOutputName", defaultValue="LRS"
+        )
 
         self.genLineLayerCombo.currentIndexChanged.connect(self.resetGenerateButtons)
         self.genLineLayerCombo.currentIndexChanged.connect(self.updateLabelsUnits)
-        self.genLineRouteFieldCombo.currentIndexChanged.connect(self.resetGenerateButtons)
+        self.genLineRouteFieldCombo.currentIndexChanged.connect(
+            self.resetGenerateButtons
+        )
         self.genPointLayerCombo.currentIndexChanged.connect(self.resetGenerateButtons)
-        self.genPointRouteFieldCombo.currentIndexChanged.connect(self.resetGenerateButtons)
-        self.genPointMeasureFieldCombo.currentIndexChanged.connect(self.resetGenerateButtons)
+        self.genPointRouteFieldCombo.currentIndexChanged.connect(
+            self.resetGenerateButtons
+        )
+        self.genPointMeasureFieldCombo.currentIndexChanged.connect(
+            self.resetGenerateButtons
+        )
 
-        self.genSelectionModeCombo.currentIndexChanged.connect(self.enableGenerateSelection)
+        self.genSelectionModeCombo.currentIndexChanged.connect(
+            self.enableGenerateSelection
+        )
         self.genSelectionButton.clicked.connect(self.openGenerateSelectionDialog)
 
         self.genButtonBox.button(QDialogButtonBox.Ok).clicked.connect(self.generateLrs)
-        self.genButtonBox.button(QDialogButtonBox.Reset).clicked.connect(self.resetGenerateOptionsAndWrite)
-        self.genButtonBox.button(QDialogButtonBox.Help).clicked.connect(lambda: self.showHelp('calibration'))
+        self.genButtonBox.button(QDialogButtonBox.Reset).clicked.connect(
+            self.resetGenerateOptionsAndWrite
+        )
+        self.genButtonBox.button(QDialogButtonBox.Help).clicked.connect(
+            lambda: self.showHelp("calibration")
+        )
 
         self.genOutputNameLineEdit.textChanged.connect(self.resetGenButtons)
         self.genCreateOutputButton.setEnabled(False)
@@ -259,14 +442,16 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.errorModel = None
         self.errorView.horizontalHeader().setStretchLastSection(True)
         self.errorZoomButton.setEnabled(False)
-        self.errorZoomButton.setIcon(QgsApplication.getThemeIcon('/mActionZoomIn.svg'))
-        self.errorZoomButton.setText('Zoom')
+        self.errorZoomButton.setIcon(QgsApplication.getThemeIcon("/mActionZoomIn.svg"))
+        self.errorZoomButton.setText("Zoom")
         self.errorZoomButton.clicked.connect(self.errorZoom)
         self.errorFilterLineEdit.textChanged.connect(self.errorFilterChanged)
 
         self.addErrorLayersButton.clicked.connect(self.addErrorLayers)
         self.addQualityLayerButton.clicked.connect(self.addQualityLayer)
-        self.errorButtonBox.button(QDialogButtonBox.Help).clicked.connect(lambda: self.showHelp('errors'))
+        self.errorButtonBox.button(QDialogButtonBox.Help).clicked.connect(
+            lambda: self.showHelp("errors")
+        )
 
         # ---------------------------- statistics tab ----------------------------
         # currently not used (did not correspond well to errors)
@@ -338,7 +523,8 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.resetLocateRoutes()
 
     def errorFilterChanged(self, text):
-        if not self.sortErrorModel: return
+        if not self.sortErrorModel:
+            return
         self.sortErrorModel.setFilterWildcard(text)
 
     def projectRead(self):
@@ -367,7 +553,9 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         if self.errorLineLayer is not None:
             self.errorLineLayerManager = LrsErrorLayerManager(self.errorLineLayer)
 
-        errorPointLayerId = project.readEntry(PROJECT_PLUGIN_NAME, "errorPointLayerId")[0]
+        errorPointLayerId = project.readEntry(PROJECT_PLUGIN_NAME, "errorPointLayerId")[
+            0
+        ]
         self.errorPointLayer = project.mapLayer(errorPointLayerId)
         if self.errorPointLayer is not None:
             self.errorPointLayerManager = LrsErrorLayerManager(self.errorPointLayer)
@@ -443,14 +631,6 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
                 self.qualityLayer = None
                 project.removeEntry(PROJECT_PLUGIN_NAME, "qualityLayerId")
 
-    def enableTabs(self):
-        enable = bool(self.lrs)
-        # self.errorTab.setEnabled(enable)
-        # self.locateTab.setEnabled(enable)
-        # self.eventsTab.setEnabled(enable)
-        # self.measureTab.setEnabled(enable)
-        # self.statsTab.setEnabled(enable)
-
     def tabChanged(self, index):
         # #debug("tabChanged index = %s" % index )
         pass
@@ -467,17 +647,17 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
             return ""
 
     def getThresholdLabel(self, crs):
-        #label = "Max point distance"
+        # label = "Max point distance"
         label = QCoreApplication.translate("LrsDockWidget", "Max point distance")
         if crs is not None:
             label += self.getUnitsLabel(crs)
         return label
 
     def getHelpUrl(self):
-        #return "file:///" + self.pluginDir + "/help/index.html"
-        helpFile = u'file:///{}/help/{}'.format(
-            self.pluginDir,
-            QCoreApplication.translate("LrsDockWidget", "index.html"))
+        # return "file:///" + self.pluginDir + "/help/index.html"
+        helpFile = "file:///{}/help/{}".format(
+            self.pluginDir, QCoreApplication.translate("LrsDockWidget", "index.html")
+        )
         # debug('help %s' % helpFile)
         return helpFile
 
@@ -497,7 +677,13 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
     # ------------------- GENERATE (CALIBRATE) -------------------
 
     def resetGenerateButtons(self):
-        enabled = self.genLineLayerCombo.currentIndex() != -1 and self.genLineRouteFieldCombo.currentIndex() != -1 and self.genPointLayerCombo.currentIndex() != -1 and self.genPointRouteFieldCombo.currentIndex() != -1 and self.genPointMeasureFieldCombo.currentIndex() != -1
+        enabled = (
+            self.genLineLayerCombo.currentIndex() != -1
+            and self.genLineRouteFieldCombo.currentIndex() != -1
+            and self.genPointLayerCombo.currentIndex() != -1
+            and self.genPointRouteFieldCombo.currentIndex() != -1
+            and self.genPointMeasureFieldCombo.currentIndex() != -1
+        )
 
         self.genButtonBox.button(QDialogButtonBox.Ok).setEnabled(enabled)
 
@@ -523,7 +709,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.writeGenerateOptions()
 
     def enableGenerateSelection(self):
-        enable = self.genSelectionModeCM.value() != 'all'
+        enable = self.genSelectionModeCM.value() != "all"
         self.genSelectionLineEdit.setEnabled(enable)
         self.genSelectionButton.setEnabled(enable)
 
@@ -559,12 +745,14 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.genOutputNameWM.readFromProject()
 
     def getGenerateSelection(self):
-        return map(str.strip, self.genSelectionLineEdit.text().split(','))
+        return map(str.strip, self.genSelectionLineEdit.text().split(","))
 
     def openGenerateSelectionDialog(self):
         if not self.genSelectionDialog:
             self.genSelectionDialog = LrsSelectionDialog()
-            self.genSelectionDialog.accepted.connect(self.generateSelectionDialogAccepted)
+            self.genSelectionDialog.accepted.connect(
+                self.generateSelectionDialogAccepted
+            )
 
         layer = self.genLineLayerCM.getLayer()
         fieldName = self.genLineRouteFieldCM.getFieldName()
@@ -596,8 +784,10 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         crs = self.getGenerateCrs()
         label = self.getThresholdLabel(crs)
         self.genThresholdLabel.setText(label)
-        #label = "Max lines snap" + self.getUnitsLabel(crs)
-        label = QCoreApplication.translate("LrsDockWidget", "Max lines snap") + self.getUnitsLabel(crs)
+        # label = "Max lines snap" + self.getUnitsLabel(crs)
+        label = QCoreApplication.translate(
+            "LrsDockWidget", "Max lines snap"
+        ) + self.getUnitsLabel(crs)
         self.genSnapLabel.setText(label)
 
     def generateLrs(self):
@@ -619,11 +809,21 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         # self.mapUnitsPerMeasureUnit = self.genMapUnitsPerMeasureUnitSpin.value()
         measureUnit = self.genMeasureUnitCM.unit()
 
-        self.lrs = LrsCalib(self.genLineLayerCM.getLayer(), self.genLineRouteFieldCM.getFieldName(),
-                            self.genPointLayerCM.getLayer(), self.genPointRouteFieldCM.getFieldName(),
-                            self.genPointMeasureFieldCM.getFieldName(), selectionMode=self.genSelectionModeCM.value(),
-                            selection=selection, crs=crs, snap=snap, threshold=threshold, parallelMode=parallelMode,
-                            extrapolate=extrapolate, measureUnit=measureUnit)
+        self.lrs = LrsCalib(
+            self.genLineLayerCM.getLayer(),
+            self.genLineRouteFieldCM.getFieldName(),
+            self.genPointLayerCM.getLayer(),
+            self.genPointRouteFieldCM.getFieldName(),
+            self.genPointMeasureFieldCM.getFieldName(),
+            selectionMode=self.genSelectionModeCM.value(),
+            selection=selection,
+            crs=crs,
+            snap=snap,
+            threshold=threshold,
+            parallelMode=parallelMode,
+            extrapolate=extrapolate,
+            measureUnit=measureUnit,
+        )
 
         self.genProgressLabel.setText("Writing features")
         self.lrs.progressChanged.connect(self.showGenProgress)
@@ -650,7 +850,9 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         # Attention, if selectionMode is QTableView.SingleSelection, selection is not
         # cleared if deleted row was selected (at least one row is always selected)
         self.errorView.setSelectionMode(QTableView.SingleSelection)
-        self.errorView.selectionModel().selectionChanged.connect(self.errorSelectionChanged)
+        self.errorView.selectionModel().selectionChanged.connect(
+            self.errorSelectionChanged
+        )
 
         self.lrs.updateErrors.connect(self.updateErrors)
 
@@ -658,7 +860,11 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.resetQualityLayer()
 
         # layers must be tested 'is not None' (because layers have __len__(), some strange len)
-        if self.errorPointLayer is not None or self.errorLineLayer is not None or self.qualityLayer is not None:
+        if (
+            self.errorPointLayer is not None
+            or self.errorLineLayer is not None
+            or self.qualityLayer is not None
+        ):
             self.iface.mapCanvas().refresh()
 
         self.lrs.edited.connect(self.lrsEdited)
@@ -675,7 +881,8 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
 
     def resetGenButtons(self):
         self.genCreateOutputButton.setEnabled(
-            self.isCalibrated() and len(self.genOutputNameLineEdit.text().strip()) > 0)
+            self.isCalibrated() and len(self.genOutputNameLineEdit.text().strip()) > 0
+        )
 
     def createLrsOutput(self):
         output = LrsOutput(self.iface, self.lrs, self.showGenProgress)
@@ -741,16 +948,28 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
             self.errorLineLayerManager = LrsErrorLayerManager(self.errorLineLayer)
             self.errorLineLayer.renderer().symbol().setColor(QColor(Qt.red))
             self.resetErrorLineLayer()
-            QgsProject.instance().addMapLayers([self.errorLineLayer, ])
-            project.writeEntry(PROJECT_PLUGIN_NAME, "errorLineLayerId", self.errorLineLayer.id())
+            QgsProject.instance().addMapLayers(
+                [
+                    self.errorLineLayer,
+                ]
+            )
+            project.writeEntry(
+                PROJECT_PLUGIN_NAME, "errorLineLayerId", self.errorLineLayer.id()
+            )
 
         if self.errorPointLayer is None:
             self.errorPointLayer = LrsErrorPointLayer(self.lrs.crs)
             self.errorPointLayerManager = LrsErrorLayerManager(self.errorPointLayer)
             self.errorPointLayer.renderer().symbol().setColor(QColor(Qt.red))
             self.resetErrorPointLayer()
-            QgsProject.instance().addMapLayers([self.errorPointLayer, ])
-            project.writeEntry(PROJECT_PLUGIN_NAME, "errorPointLayerId", self.errorPointLayer.id())
+            QgsProject.instance().addMapLayers(
+                [
+                    self.errorPointLayer,
+                ]
+            )
+            project.writeEntry(
+                PROJECT_PLUGIN_NAME, "errorPointLayerId", self.errorPointLayer.id()
+            )
 
     # reset error layers content (features)
     def resetErrorLayers(self):
@@ -789,13 +1008,20 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
             self.qualityLayerManager = LrsQualityLayerManager(self.qualityLayer)
 
             self.resetQualityLayer()
-            QgsProject.instance().addMapLayers([self.qualityLayer, ])
+            QgsProject.instance().addMapLayers(
+                [
+                    self.qualityLayer,
+                ]
+            )
             project = QgsProject.instance()
-            project.writeEntry(PROJECT_PLUGIN_NAME, "qualityLayerId", self.qualityLayer.id())
+            project.writeEntry(
+                PROJECT_PLUGIN_NAME, "qualityLayerId", self.qualityLayer.id()
+            )
 
     def resetQualityLayer(self):
         # #debug ( "resetQualityLayer %s" % self.qualityLayer )
-        if not self.qualityLayerManager: return
+        if not self.qualityLayerManager:
+            return
         self.qualityLayerManager.clear()
         features = self.lrs.getQualityFeatures()
         self.qualityLayerManager.addFeatures(features, self.lrs.crs)
@@ -827,7 +1053,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
 
     def resetLocateRoutes(self):
         # debug("resetLocateRoutes lrsLayer: %s" % (self.lrsLayer if self.lrsLayer else None))
-        options = [(None, '')]
+        options = [(None, "")]
         if self.lrsLayer:
             options.extend([(id, "%s" % id) for id in self.lrsLayer.getRouteIds()])
         # debug("resetLocateRoutes options: %s" % options)
@@ -835,13 +1061,15 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
 
     def locateRouteChanged(self):
         # #debug ('locateRouteChanged')
-        rangesText = ''
+        rangesText = ""
         routeId = self.locateRouteCM.value()
         if self.lrsLayer and routeId is not None:
             ranges = []
             for r in self.lrsLayer.getRouteMeasureRanges(routeId):
                 rang = "%s-%s" % (
-                    formatMeasure(r[0], self.lrsLayer.measureUnit), formatMeasure(r[1], self.lrsLayer.measureUnit))
+                    formatMeasure(r[0], self.lrsLayer.measureUnit),
+                    formatMeasure(r[1], self.lrsLayer.measureUnit),
+                )
                 ranges.append(rang)
             rangesText = ", ".join(ranges)
         # #debug ('ranges: %s' % rangesText )
@@ -856,7 +1084,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.clearLocateHighlight()
         routeId = self.locateRouteCM.value()
         measure = self.locateMeasureSpin.value()
-        coordinates = ''
+        coordinates = ""
         point = None
         if routeId is not None:
             point, error = self.lrsLayer.eventPointXY(routeId, measure)
@@ -864,8 +1092,11 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
             if point:
                 mapSettings = self.iface.mapCanvas().mapSettings()
                 if isProjectCrsEnabled() and getProjectCrs() != self.lrsLayer.crs:
-                    transform = QgsCoordinateTransform(self.lrsLayer.crs, mapSettings.destinationCrs(),
-                                                       QgsProject.instance())
+                    transform = QgsCoordinateTransform(
+                        self.lrsLayer.crs,
+                        mapSettings.destinationCrs(),
+                        QgsProject.instance(),
+                    )
                     point = transform.transform(point)
                 coordinates = "%.3f,%.3f" % (point.x(), point.y())
             else:
@@ -888,17 +1119,22 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
     def highlightLocatePoint(self):
         # #debug ('highlightLocatePoint')
         self.clearLocateHighlight()
-        if not self.locatePoint: return
-        if not self.locateHighlightCheckBox.isChecked(): return
+        if not self.locatePoint:
+            return
+        if not self.locateHighlightCheckBox.isChecked():
+            return
 
         mapCanvas = self.iface.mapCanvas()
-        mapSettings = mapCanvas.mapSettings()
         # QgsHighlight does reprojection from layer CRS
         crs = getProjectCrs() if isProjectCrsEnabled() else self.lrsLayer.crs
-        layer = QgsVectorLayer('Point?crs=' + crsString(crs), 'LRS locate highlight', 'memory')
-        #self.locateHighlight = QgsHighlight(mapCanvas, QgsGeometry.fromPoint(self.locatePoint), layer)
+        layer = QgsVectorLayer(
+            "Point?crs=" + crsString(crs), "LRS locate highlight", "memory"
+        )
+        # self.locateHighlight = QgsHighlight(mapCanvas, QgsGeometry.fromPoint(self.locatePoint), layer)
         # QgsGeometry(QgsPoint) takes ownership!
-        self.locateHighlight = QgsHighlight(mapCanvas, QgsGeometry(QgsPoint(self.locatePoint)), layer)
+        self.locateHighlight = QgsHighlight(
+            mapCanvas, QgsGeometry(QgsPoint(self.locatePoint)), layer
+        )
         # highlight point size is hardcoded in QgsHighlight
         self.locateHighlight.setWidth(2)
         self.locateHighlight.setColor(Qt.yellow)
@@ -911,7 +1147,8 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
             self.locateHighlight = None
 
     def locateCenter(self):
-        if not self.locatePoint: return
+        if not self.locatePoint:
+            return
         mapCanvas = self.iface.mapCanvas()
         extent = mapCanvas.extent()
         extent.scale(1.0, self.locatePoint.x(), self.locatePoint.y())
@@ -920,7 +1157,8 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.iface.mapCanvas().refresh()
 
     def locateZoom(self):
-        if not self.locatePoint: return
+        if not self.locatePoint:
+            return
         p = self.locatePoint
         b = self.locateBufferSpin.value()
         extent = QgsRectangle(p.x() - b, p.y() - b, p.x() + b, p.y() + b)
@@ -949,9 +1187,13 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         self.writeEventsOptions()
 
     def resetEventsButtons(self):
-        enabled = bool(
-            self.lrsLayer) and self.eventsLayerCombo.currentIndex() != -1 and self.eventsRouteFieldCombo.currentIndex() != -1 and self.eventsMeasureStartFieldCombo.currentIndex() != -1 and bool(
-            self.eventsOutputNameLineEdit.text())
+        enabled = (
+            bool(self.lrsLayer)
+            and self.eventsLayerCombo.currentIndex() != -1
+            and self.eventsRouteFieldCombo.currentIndex() != -1
+            and self.eventsMeasureStartFieldCombo.currentIndex() != -1
+            and bool(self.eventsOutputNameLineEdit.text())
+        )
 
         self.eventsButtonBox.button(QDialogButtonBox.Ok).setEnabled(enabled)
 
@@ -993,12 +1235,23 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         endOffsetFieldName = self.eventsOffsetEndFieldCM.getFieldName()
         featuresSelect = self.eventsFeaturesSelectCM.value()
         outputName = self.eventsOutputNameLineEdit.text()
-        if not outputName: outputName = self.eventsOutputNameWM.defaultValue()
+        if not outputName:
+            outputName = self.eventsOutputNameWM.defaultValue()
         errorFieldName = self.eventsErrorFieldLineEdit.text()
 
         events = LrsEvents(self.lrsLayer, self.eventsProgressBar)
-        #events.create(layer, featuresSelect, routeFieldName, startFieldName, endFieldName, errorFieldName, outputName)
-        events.create(layer, featuresSelect, routeFieldName, startFieldName, endFieldName, errorFieldName, outputName, startOffsetFieldName, endOffsetFieldName)
+        # events.create(layer, featuresSelect, routeFieldName, startFieldName, endFieldName, errorFieldName, outputName)
+        events.create(
+            layer,
+            featuresSelect,
+            routeFieldName,
+            startFieldName,
+            endFieldName,
+            errorFieldName,
+            outputName,
+            startOffsetFieldName,
+            endOffsetFieldName,
+        )
 
     # ------------------- MEASURE -------------------
 
@@ -1019,9 +1272,13 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
 
     def resetMeasureButtons(self):
         # #debug('resetMeasureButtons')
-        enabled = bool(self.lrsLayer) and self.measureLayerCombo.currentIndex() != -1 and bool(
-            self.measureOutputNameLineEdit.text()) and bool(self.measureOutputRouteFieldLineEdit.text()) and bool(
-            self.measureMeasureFieldLineEdit.text())
+        enabled = (
+            bool(self.lrsLayer)
+            and self.measureLayerCombo.currentIndex() != -1
+            and bool(self.measureOutputNameLineEdit.text())
+            and bool(self.measureOutputRouteFieldLineEdit.text())
+            and bool(self.measureMeasureFieldLineEdit.text())
+        )
 
         self.measureButtonBox.button(QDialogButtonBox.Ok).setEnabled(enabled)
 
@@ -1059,12 +1316,20 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         routeFieldName = self.measureRouteFieldCM.getFieldName()
         threshold = self.measureThresholdSpin.value()
         outputName = self.measureOutputNameLineEdit.text()
-        if not outputName: outputName = self.measureOutputNameWM.defaultValue()
+        if not outputName:
+            outputName = self.measureOutputNameWM.defaultValue()
         outputRouteFieldName = self.measureOutputRouteFieldLineEdit.text()
         measureFieldName = self.measureMeasureFieldLineEdit.text()
 
         measures = LrsMeasures(self.iface, self.lrsLayer, self.measureProgressBar)
-        measures.calculate(layer, routeFieldName, outputRouteFieldName, measureFieldName, threshold, outputName)
+        measures.calculate(
+            layer,
+            routeFieldName,
+            outputRouteFieldName,
+            measureFieldName,
+            threshold,
+            outputName,
+        )
 
     # ------------------- STATS -------------------
 
@@ -1078,9 +1343,11 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
             #         html = self.lrs.getStatsHtml()
             # self.statsTextEdit.setHtml(html)
 
-            self.errorTotalLength.setText("%.3f" % self.lrs.getStat('length'))
-            self.errorIncludedLength.setText("%.3f" % self.lrs.getStat('lengthIncluded'))
-            self.errorSuccessLength.setText("%.3f" % self.lrs.getStat('lengthOk'))
+            self.errorTotalLength.setText("%.3f" % self.lrs.getStat("length"))
+            self.errorIncludedLength.setText(
+                "%.3f" % self.lrs.getStat("lengthIncluded")
+            )
+            self.errorSuccessLength.setText("%.3f" % self.lrs.getStat("lengthOk"))
 
     # -------------------- widget ----------------------
     def saveWidgetGeometry(self):

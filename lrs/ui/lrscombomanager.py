@@ -19,6 +19,7 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from .lrscombomanagerbase import LrsComboManagerBase
 
 

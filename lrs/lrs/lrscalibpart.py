@@ -19,11 +19,24 @@
  *                                                                         *
  ***************************************************************************/
 """
-from .error.lrserror import *
+
+import sys
+
+from qgis.core import QgsGeometry, QgsLineString, QgsPoint, QgsUnitTypes, QgsWkbTypes
+
+from .error.lrserror import LrsError
 from .lrsorigin import LrsOrigin
 from .lrspartbase import LrsPartBase
 from .lrsrecord import LrsRecord
 from .lrssegment import LrsSegment
+from .utils import (
+    convertDistanceUnits,
+    doubleNear,
+    measureAlongPolyline,
+    polylineXYPointXY,
+    polylineXYSegmentXY,
+    segmentLength,
+)
 
 
 # Route part loaded from LRS layer
@@ -56,13 +69,21 @@ class LrsCalibPart(LrsPartBase):
 
         if len(self.milestones) < 2:
             self.errors.append(
-                LrsError(LrsError.NOT_ENOUGH_MILESTONES, self.polylineGeo, routeId=self.routeId, origins=self.origins))
+                LrsError(
+                    LrsError.NOT_ENOUGH_MILESTONES,
+                    self.polylineGeo,
+                    routeId=self.routeId,
+                    origins=self.origins,
+                )
+            )
             return
 
         # create list of milestones sorted by partMeasure
         milestones = list(self.milestones)
         # sort by partMeasure and measure
-        milestones.sort(key=lambda milestone: (milestone.partMeasure, milestone.measure))
+        milestones.sort(
+            key=lambda milestone: (milestone.partMeasure, milestone.measure)
+        )
 
         # for milestone in milestones:
         #    debug ( 'partMeasure = %s measure = %s' % ( milestone.partMeasure, milestone.measure ) )
@@ -80,7 +101,13 @@ class LrsCalibPart(LrsPartBase):
 
         if up == down:
             self.errors.append(
-                LrsError(LrsError.DIRECTION_GUESS, self.polylineGeo, routeId=self.routeId, origins=self.origins))
+                LrsError(
+                    LrsError.DIRECTION_GUESS,
+                    self.polylineGeo,
+                    routeId=self.routeId,
+                    origins=self.origins,
+                )
+            )
             return
         elif down > up:  # revert
             self.polyline.reverse()
@@ -94,7 +121,7 @@ class LrsCalibPart(LrsPartBase):
         # sequence of milestones in correct order may appear in wrong place, e.g.7,8,3,4
         # or it may happen that correct sequence is interrupted by wrong milestone but in
         # correct order respect to longest sequence e.g. 1,2,0,3,4,5
-        # Algorithm: 
+        # Algorithm:
         #     While there are milestones in wrong order:
         #         * for each milestones calculate correctness score
         #         * mark as error all milestones with lowest score
@@ -103,7 +130,7 @@ class LrsCalibPart(LrsPartBase):
             done = True
 
             # calculate scores
-            # score: number of milestones to which it is in correct order minus 
+            # score: number of milestones to which it is in correct order minus
             #        number of milestones to which it is in wrong order,
             #        if both have the same measure, it is considered wrong order
             scores = []
@@ -111,7 +138,8 @@ class LrsCalibPart(LrsPartBase):
             for i in range(len(milestones)):
                 score = 0
                 for j in range(len(milestones)):
-                    if i == j: continue
+                    if i == j:
+                        continue
                     mi = milestones[i].measure
                     mj = milestones[j].measure
                     if (i < j and mi < mj) or (i > j and mi > mj):
@@ -128,18 +156,28 @@ class LrsCalibPart(LrsPartBase):
             # find lowest score
             minScore = sys.maxsize
             for i in range(len(scores)):
-                if scores[i] < minScore: minScore = scores[i]
+                if scores[i] < minScore:
+                    minScore = scores[i]
 
             # mark all with lowest score as errors, if more neighbours have the same score
-            # e.g. measures: 3,0,4,5, both 3 and 0 have score +1, both are marked as 
+            # e.g. measures: 3,0,4,5, both 3 and 0 have score +1, both are marked as
             # error because we cannot decide which is correct
             for i in range(len(milestones) - 1, -1, -1):
                 if scores[i] == minScore:
                     m = milestones[i]
                     geo = QgsGeometry.fromPointXY(m.pnt)
-                    origin = LrsOrigin(QgsWkbTypes.PointGeometry, m.fid, m.geoPart, m.nGeoParts)
-                    self.errors.append(LrsError(LrsError.WRONG_MEASURE, geo, routeId=self.routeId, measure=m.measure,
-                                                origins=[origin]))
+                    origin = LrsOrigin(
+                        QgsWkbTypes.PointGeometry, m.fid, m.geoPart, m.nGeoParts
+                    )
+                    self.errors.append(
+                        LrsError(
+                            LrsError.WRONG_MEASURE,
+                            geo,
+                            routeId=self.routeId,
+                            measure=m.measure,
+                            origins=[origin],
+                        )
+                    )
                     del milestones[i]
 
         self.goodMilestones = milestones
@@ -149,9 +187,13 @@ class LrsCalibPart(LrsPartBase):
             m1 = milestones[i]
             m2 = milestones[i + 1]
             # usually should not happen, report as error?
-            if doubleNear(m1.measure, m2.measure): continue
-            if doubleNear(m1.partMeasure, m2.partMeasure): continue
-            self.records.append(LrsRecord(m1.measure, m2.measure, m1.partMeasure, m2.partMeasure))
+            if doubleNear(m1.measure, m2.measure):
+                continue
+            if doubleNear(m1.partMeasure, m2.partMeasure):
+                continue
+            self.records.append(
+                LrsRecord(m1.measure, m2.measure, m1.partMeasure, m2.partMeasure)
+            )
 
     # calculate segment measure in measure units, used for extrapolate
     def segmentLengthInMeasureUnits(self, partFrom, partTo):
@@ -169,7 +211,8 @@ class LrsCalibPart(LrsPartBase):
     # extrapolate before and after (add calculated records)
     def extrapolate(self):
         # debug ('extrapolate part')
-        if not self.records: return  # direction unknown
+        if not self.records:
+            return  # direction unknown
 
         record = self.records[0]
         if record.partFrom > 0 and not doubleNear(record.partFrom, 0):
@@ -178,7 +221,9 @@ class LrsCalibPart(LrsPartBase):
             measure = record.milestoneFrom - length
 
             # debug ('routeId = %s measure = %s' % (self.routeId,measure) )
-            self.records.insert(0, LrsRecord(measure, record.milestoneFrom, 0, record.partFrom))
+            self.records.insert(
+                0, LrsRecord(measure, record.milestoneFrom, 0, record.partFrom)
+            )
 
         record = self.records[-1]
         # debug ('routeId = %s partTo = %s length = %s' % (self.routeId,record.partTo,self.length) )
@@ -187,7 +232,9 @@ class LrsCalibPart(LrsPartBase):
             length = self.segmentLengthInMeasureUnits(record.partTo, self.length)
             measure = record.milestoneTo + length
             # debug ('routeId = %s measure = %s' % (self.routeId,measure) )
-            self.records.append(LrsRecord(record.milestoneTo, measure, record.partTo, self.length))
+            self.records.append(
+                LrsRecord(record.milestoneTo, measure, record.partTo, self.length)
+            )
 
     def getGoodMilestones(self):
         return self.goodMilestones
@@ -212,21 +259,23 @@ class LrsCalibPart(LrsPartBase):
     def getWktWithMeasures(self):
         # debug('getWktWithMeasures')
         coors = self.getCoordinatesWithMeasures()
-        if not coors or len(coors) < 2: return None
-        coors = ['%f %f %f' % (c[0], c[1], c[2]) for c in coors]
-        return 'LINESTRINGM ( %s )' % ", ".join(coors)
+        if not coors or len(coors) < 2:
+            return None
+        coors = ["%f %f %f" % (c[0], c[1], c[2]) for c in coors]
+        return "LINESTRINGM ( %s )" % ", ".join(coors)
 
     def getGeometryWithMeasures(self):
         # debug('getGeometryWithMeasures')
         coors = self.getCoordinatesWithMeasures()
-        if not coors or len(coors) < 2: return None
+        if not coors or len(coors) < 2:
+            return None
 
         linestring = QgsLineString()
         for c in coors:
             point = QgsPoint(c[0], c[1])
             point.addMValue(c[2])
             linestring.addVertex(point)
-        return 	QgsGeometry(linestring)
+        return QgsGeometry(linestring)
 
     # overridden
     def eventPointXY(self, start):
@@ -288,20 +337,25 @@ class LrsCalibPart(LrsPartBase):
                     seg.partTo = record.partTo
 
             if seg.milestoneTo is not None:
-                polylineXY = polylineXYSegmentXY(self.polyline, seg.partFrom, seg.partTo)
+                polylineXY = polylineXYSegmentXY(
+                    self.polyline, seg.partFrom, seg.partTo
+                )
                 segments.append([polylineXY, seg.milestoneFrom, seg.milestoneTo])
 
                 start = seg.milestoneTo
                 seg = LrsRecord(None, None, None, None)
 
-            if doubleNear(start, end): break
+            if doubleNear(start, end):
+                break
 
         return segments
 
     # overridden
     def pointMeasure(self, point):
         geo = QgsGeometry.fromPolylineXY(self.polyline)
-        (sqDist, nearestPoint, afterVertex, leftOf) = geo.closestSegmentWithContext(point, 0)
+        (sqDist, nearestPoint, afterVertex, leftOf) = geo.closestSegmentWithContext(
+            point, 0
+        )
         segment = afterVertex - 1
         partMeasure = measureAlongPolyline(self.polyline, segment, nearestPoint)
         return self.getMilestoneMeasure(partMeasure)
@@ -322,7 +376,8 @@ class LrsCalibPart(LrsPartBase):
 
     # end of last record
     def milestoneMeasureTo(self):
-        if not self.records: return None
+        if not self.records:
+            return None
         return self.records[-1].milestoneTo
 
     # return list of coordinates with measures [[x,y,m],...]
@@ -330,7 +385,8 @@ class LrsCalibPart(LrsPartBase):
     def getCoordinatesWithMeasures(self):
         # debug('getCoordinatesWithMeasures routeId = %s' % self.routeId )
         coors = []
-        if not self.records: return coors
+        if not self.records:
+            return coors
 
         # get measures for polyline
         partMeasure = 0

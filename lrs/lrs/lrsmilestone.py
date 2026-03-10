@@ -22,8 +22,6 @@
 # Import the PyQt and QGIS libraries
 # from PyQt4.QtGui import *
 
-from .utils import *
-
 
 class LrsMilestone(object):
     def __init__(self, fid, geoPart, nGeoParts, pnt, measure):

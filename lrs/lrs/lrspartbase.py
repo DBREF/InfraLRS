@@ -19,12 +19,12 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from abc import ABCMeta, abstractmethod
 
 from qgis.core import QgsGeometry
 
-from .lrsrecord import LrsRecord
-from .utils import polylineXYPointXY, polylineXYSegmentXY, doubleNear, measureAlongPolyline, segmentLength, debug
+from .utils import polylineXYSegmentXY
 
 
 # Route part
@@ -63,7 +63,7 @@ class LrsPartBase(metaclass=ABCMeta):
         return geo
 
     def __str__(self):
-        return "part %s" % ",".join( list("%s" %r for r in self.records) )
+        return "part %s" % ",".join(list("%s" % r for r in self.records))
 
     # returns QgsPointXY or None
     @abstractmethod

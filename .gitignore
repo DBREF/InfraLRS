@@ -1,46 +1,73 @@
-*.*~
-*~
-.*.swp
-core
-
+# Python
+__pycache__/
 *.py[cod]
-resources_rc.py
-ui_*.py
-
-# C extensions
+*$py.class
+*.pyo
+*.pyd
 *.so
-
-# Packages
 *.egg
-*.egg-info
-dist
-build
-eggs
-parts
-bin
-var
-sdist
-develop-eggs
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
 .installed.cfg
-lib
-lib64
-lrs/*.zip
+lib/
+lib64/
+.eggs/
 
-# Installer logs
-pip-log.txt
+# Virtuelle Umgebungen
+.venv/
+venv/
+env/
+ENV/
+.env
 
-# Unit test / coverage reports
+# Verteilung / Paketierung
+*.whl
+MANIFEST
+
+# Unit-Tests
+htmlcov/
+.tox/
+.nox/
 .coverage
-.tox
+.coverage.*
+.cache
 nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
 
-# Translations
-*.mo
+# Jupyter Notebook
+.ipynb_checkpoints
 
-# Mr Developer
-.mr.developer.cfg
-.project
-.pydevproject
+# pyenv
+.python-version
 
-# PyCharm
-.idea/workspace.xml
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre_Typüberprüfung
+.pyre/
+
+# PyInstaller
+*.spec.bak
+
+# Protokolle
+*.log
+
+# Betriebssystem
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# VS Code
+.vscode/

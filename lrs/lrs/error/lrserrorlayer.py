@@ -19,14 +19,12 @@
  *                                                                         *
  ***************************************************************************/
 """
-# Import the PyQt and QGIS libraries
-from qgis.core import QgsVectorLayer, QgsProviderRegistry
 
+# Import the PyQt and QGIS libraries
+from qgis.core import QgsProviderRegistry, QgsVectorLayer
 
 # changes done to vector layer attributes are not stored correctly in project file
 # http://hub.qgis.org/issues/8997 -> recreate temporary provider first to construct uri
-
-
 # To add methods on layers, we must use manager, not extended QgsVectorLayer,
 # because layers may be stored in project and created by QGIS.
 # Inherited layers are only used to create layer with type and attributes
@@ -35,8 +33,8 @@ from .lrserrorfields import LRS_ERROR_FIELDS
 
 class LrsErrorLayer(QgsVectorLayer):
     def __init__(self, uri, baseName):
-        provider = QgsProviderRegistry.instance().createProvider('memory', uri)
+        provider = QgsProviderRegistry.instance().createProvider("memory", uri)
         provider.addAttributes(LRS_ERROR_FIELDS.toList())
         uri = provider.dataSourceUri()
         # debug ( 'uri = %s' % uri )
-        super(LrsErrorLayer, self).__init__(uri, baseName, 'memory')
+        super(LrsErrorLayer, self).__init__(uri, baseName, "memory")

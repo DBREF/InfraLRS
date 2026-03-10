@@ -19,6 +19,7 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from hashlib import md5
 
 from .lrsfeature import LrsFeature
@@ -34,7 +35,7 @@ class LrsQualityFeature(LrsFeature):
     # geometry + all attributes
     def getChecksum(self):
         if not self.checksum_:
-            #m = md5("%s" % self.geometry().asWkb())
+            # m = md5("%s" % self.geometry().asWkb())
             m = md5(self.geometry().asWkb())
 
             for attribute in self.attributes():
@@ -42,5 +43,3 @@ class LrsQualityFeature(LrsFeature):
 
             self.checksum_ = m.digest()
         return self.checksum_
-
-

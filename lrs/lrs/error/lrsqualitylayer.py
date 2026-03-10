@@ -19,27 +19,35 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
-from qgis.core import QgsVectorLayer, QgsProviderRegistry, QgsWkbTypes, QgsSymbol, QgsRendererRange, QgsGraduatedSymbolRenderer
 
-from .lrsqualityfields import LRS_QUALITY_FIELDS
+from qgis.core import (
+    QgsGraduatedSymbolRenderer,
+    QgsProviderRegistry,
+    QgsRendererRange,
+    QgsSymbol,
+    QgsVectorLayer,
+    QgsWkbTypes,
+)
+from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QColor
+
 from ..utils import crsString
+from .lrsqualityfields import LRS_QUALITY_FIELDS
 
 
 class LrsQualityLayer(QgsVectorLayer):
     def __init__(self, crs):
         uri = "LineString?crs=%s" % crsString(crs)
-        provider = QgsProviderRegistry.instance().createProvider('memory', uri)
+        provider = QgsProviderRegistry.instance().createProvider("memory", uri)
         provider.addAttributes(LRS_QUALITY_FIELDS.toList())
         uri = provider.dataSourceUri()
-        super(LrsQualityLayer, self).__init__(uri, 'LRS quality', 'memory')
+        super(LrsQualityLayer, self).__init__(uri, "LRS quality", "memory")
 
         # min, max, color, label
         styles = [
-            [0, 10, QColor(Qt.green), '0 - 10 % error'],
-            [10, 30, QColor(Qt.blue), '10 - 30 % error'],
-            [30, 1000000, QColor(Qt.red), '> 30 % error']
+            [0, 10, QColor(Qt.green), "0 - 10 % error"],
+            [10, 30, QColor(Qt.blue), "10 - 30 % error"],
+            [30, 1000000, QColor(Qt.red), "> 30 % error"],
         ]
         ranges = []
         for style in styles:
@@ -48,7 +56,5 @@ class LrsQualityLayer(QgsVectorLayer):
             range = QgsRendererRange(style[0], style[1], symbol, style[3])
             ranges.append(range)
 
-        renderer = QgsGraduatedSymbolRenderer('err_perc', ranges)
+        renderer = QgsGraduatedSymbolRenderer("err_perc", ranges)
         self.setRenderer(renderer)
-
-

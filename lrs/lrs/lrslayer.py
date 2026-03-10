@@ -19,12 +19,11 @@
  *                                                                         *
  ***************************************************************************/
 """
-from time import sleep
 
-from .error.lrserror import *
 from .lrsbase import LrsBase
 from .lrslayerpart import LrsLayerPart
 from .lrslayerroute import LrsLayerRoute
+from .utils import normalizeRouteId
 
 
 # The class representing existing layer with measures
@@ -40,7 +39,7 @@ class LrsLayer(LrsBase):
 
     # load from layer
     def load(self, progressFunction=None):
-        #debug("load %s %s" % (self.layer.name(), self.routeFieldName))
+        # debug("load %s %s" % (self.layer.name(), self.routeFieldName))
         self.reset()
         if not self.routeFieldName:
             return
@@ -55,15 +54,15 @@ class LrsLayer(LrsBase):
 
             routeId = feature[self.routeFieldName]
             route = self.getRoute(routeId)
-            #line = LrsLine(feature.id(), routeId, geo)
-            #self.lines[feature.id()] = line
+            # line = LrsLine(feature.id(), routeId, geo)
+            # self.lines[feature.id()] = line
             if geo:
                 for g in geo.asGeometryCollection():
                     part = LrsLayerPart(g)
                     route.addPart(part)
 
             count += 1
-            percent = 100 * count / total;
+            percent = 100 * count / total
             if progressFunction:
                 progressFunction(percent)
 
@@ -76,11 +75,11 @@ class LrsLayer(LrsBase):
         normalId = normalizeRouteId(routeId)
         # debug ( 'normalId = %s orig type = %s' % (normalId, type(routeId) ) )
         if normalId not in self.routes:
-            self.routes[normalId] = LrsLayerRoute(routeId, parallelMode='error')
+            self.routes[normalId] = LrsLayerRoute(routeId, parallelMode="error")
         return self.routes[normalId]
 
     def getRouteIds(self):
-        #debug("getRouteIds routeFieldName = %s" % self.routeFieldName)
+        # debug("getRouteIds routeFieldName = %s" % self.routeFieldName)
         if not self.layer or not self.routeFieldName:
             return []
         ids = set()
@@ -89,4 +88,3 @@ class LrsLayer(LrsBase):
         ids = list(ids)
         ids.sort()
         return ids
-

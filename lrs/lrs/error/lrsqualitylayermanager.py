@@ -19,6 +19,7 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from .lrslayermanager import LrsLayerManager
 
 
@@ -32,9 +33,9 @@ class LrsQualityLayerManager(LrsLayerManager):
             return
 
         # delete
-        self.deleteChecksums(errorUpdates['removedQualityChecksums'])
+        self.deleteChecksums(errorUpdates["removedQualityChecksums"])
 
         # no update, only remove and add
 
         # add new
-        self.addFeatures(errorUpdates['addedQualityFeatures'], errorUpdates['crs'])
+        self.addFeatures(errorUpdates["addedQualityFeatures"], errorUpdates["crs"])

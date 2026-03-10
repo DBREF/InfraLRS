@@ -19,11 +19,19 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtCore import Qt
-from qgis.core import QgsVectorLayer, QgsGeometry, QgsCoordinateTransform, QgsProject, QgsWkbTypes, QgsRectangle
-from qgis.gui import QgsHighlight
 
-from ..utils import crsString, isProjectCrsEnabled, getProjectCrs
+from qgis.core import (
+    QgsCoordinateTransform,
+    QgsGeometry,
+    QgsProject,
+    QgsRectangle,
+    QgsVectorLayer,
+    QgsWkbTypes,
+)
+from qgis.gui import QgsHighlight
+from qgis.PyQt.QtCore import Qt
+
+from ..utils import crsString, getProjectCrs, isProjectCrsEnabled
 
 
 # Highlight, zoom errors
@@ -43,10 +51,13 @@ class LrsErrorVisualizer(object):
 
     def highlight(self, error, crs):
         self.clearHighlight()
-        if not error: return
+        if not error:
+            return
 
         # QgsHighlight does reprojection from layer CRS
-        layer = QgsVectorLayer('Point?crs=' + crsString(crs), 'LRS error highlight', 'memory')
+        layer = QgsVectorLayer(
+            "Point?crs=" + crsString(crs), "LRS error highlight", "memory"
+        )
         self.errorHighlight = QgsHighlight(self.mapCanvas, error.geo, layer)
         # highlight point size is hardcoded in QgsHighlight
         self.errorHighlight.setWidth(2)
@@ -54,12 +65,14 @@ class LrsErrorVisualizer(object):
         self.errorHighlight.show()
 
     def zoom(self, error, crs):
-        if not error: return
+        if not error:
+            return
         geo = error.geo
-        mapSettings = self.mapCanvas.mapSettings()
         if isProjectCrsEnabled() and getProjectCrs() != crs:
             geo = QgsGeometry(error.geo)
-            transform = QgsCoordinateTransform(crs, QgsProject().instance().crs(), QgsProject.instance())
+            transform = QgsCoordinateTransform(
+                crs, QgsProject().instance().crs(), QgsProject.instance()
+            )
             geo.transform(transform)
 
         if geo.type() == QgsWkbTypes.PointGeometry:
@@ -71,4 +84,4 @@ class LrsErrorVisualizer(object):
             extent = geo.boundingBox()
             extent.scale(2)
         self.mapCanvas.setExtent(extent)
-        self.mapCanvas.refresh();
+        self.mapCanvas.refresh()

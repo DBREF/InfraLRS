@@ -19,11 +19,11 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtCore import pyqtSignal, Qt, QModelIndex
-from PyQt5.QtGui import QStandardItem
-from qgis.core import QgsMapLayer, QgsProject, QgsWkbTypes
 
-from ..lrs.utils import debug
+from qgis.core import QgsMapLayer, QgsProject, QgsWkbTypes
+from qgis.PyQt.QtCore import QModelIndex, Qt, pyqtSignal
+from qgis.PyQt.QtGui import QStandardItem
+
 from .lrscombomanagerbase import LrsComboManagerBase
 
 
@@ -32,8 +32,8 @@ class LrsLayerComboManager(LrsComboManagerBase):
 
     def __init__(self, comboOrList, **kwargs):
         super(LrsLayerComboManager, self).__init__(comboOrList, **kwargs)
-        self.geometryType = kwargs.get('geometryType', None)  # QgsWkbTypes.GeometryType
-        self.geometryHasM = kwargs.get('geometryHasM', False)  # has measure
+        self.geometryType = kwargs.get("geometryType", None)  # QgsWkbTypes.GeometryType
+        self.geometryHasM = kwargs.get("geometryHasM", False)  # has measure
 
         self.connectCombos()  # connect to this class method
 
@@ -48,7 +48,7 @@ class LrsLayerComboManager(LrsComboManagerBase):
         QgsProject.instance().layersRemoved.disconnect(self.canvasLayersChanged)
 
     def currentIndexChanged(self, idx):
-        #debug("LrsLayerComboManager currentIndexChanged idx = %s" % idx)
+        # debug("LrsLayerComboManager currentIndexChanged idx = %s" % idx)
         super(LrsLayerComboManager, self).currentIndexChanged(idx)
         self.layerChanged.emit(self.getLayer())
 
@@ -65,12 +65,12 @@ class LrsLayerComboManager(LrsComboManagerBase):
         return QgsProject.instance().mapLayer(lId)
 
     def canvasLayersChanged(self):
-        #self.debug("LrsLayerComboManager currentIndexChanged")
+        # self.debug("LrsLayerComboManager currentIndexChanged")
         self.reload()
 
     def reload(self):
         # https://qgis.org/api/classQgsMapLayerComboBox.html#af4d245f67261e82719290ca028224b3c
-        #self.debug("LrsLayerComboManager reload")
+        # self.debug("LrsLayerComboManager reload")
 
         if not QgsProject:
             return
@@ -97,13 +97,18 @@ class LrsLayerComboManager(LrsComboManagerBase):
             # print(layer)
             if layer.type() != QgsMapLayer.VectorLayer:
                 continue
-            if self.geometryType is not None and layer.geometryType() != self.geometryType:
+            if (
+                self.geometryType is not None
+                and layer.geometryType() != self.geometryType
+            ):
                 continue
             if self.geometryHasM and not QgsWkbTypes.hasM(layer.wkbType()):
                 continue
 
             start = self.model.index(0, 0, QModelIndex())
-            indexes = self.model.match(start, Qt.UserRole, layer.id(), Qt.MatchFixedString)
+            indexes = self.model.match(
+                start, Qt.UserRole, layer.id(), Qt.MatchFixedString
+            )
             if len(indexes) == 0:  # add new
                 item = QStandardItem(layer.name())
                 item.setData(layer.id(), Qt.UserRole)

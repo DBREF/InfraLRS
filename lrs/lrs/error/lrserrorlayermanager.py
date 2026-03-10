@@ -19,11 +19,11 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from qgis.core import QgsWkbTypes
 
-from ..utils import debug
-from .lrslayermanager import LrsLayerManager
 from .lrserrorfeature import LrsErrorFeature
+from .lrslayermanager import LrsLayerManager
 
 
 class LrsErrorLayerManager(LrsLayerManager):
@@ -32,9 +32,15 @@ class LrsErrorLayerManager(LrsLayerManager):
 
     # test if error geometry type matches this layer
     def errorTypeMatch(self, error):
-        if self.layer.geometryType() == QgsWkbTypes.PointGeometry and error.geo.type() != QgsWkbTypes.PointGeometry:
+        if (
+            self.layer.geometryType() == QgsWkbTypes.PointGeometry
+            and error.geo.type() != QgsWkbTypes.PointGeometry
+        ):
             return False
-        if self.layer.geometryType() == QgsWkbTypes.LineGeometry and error.geo.type() != QgsWkbTypes.LineGeometry:
+        if (
+            self.layer.geometryType() == QgsWkbTypes.LineGeometry
+            and error.geo.type() != QgsWkbTypes.LineGeometry
+        ):
             return False
         return True
 
@@ -42,15 +48,15 @@ class LrsErrorLayerManager(LrsLayerManager):
     def addErrors(self, errors, crs):
         if self.layer is None:
             return
-        #debug("addErrors geometryType = %s errors count = %s" % (self.layer.geometryType(), len(errors)))
+        # debug("addErrors geometryType = %s errors count = %s" % (self.layer.geometryType(), len(errors)))
 
         features = []
         for error in errors:
-            #debug("addErrors %s" % error)
+            # debug("addErrors %s" % error)
             if not self.errorTypeMatch(error):
                 continue
             feature = LrsErrorFeature(error)
-            #debug("addErrors %s" % feature)
+            # debug("addErrors %s" % feature)
             features.append(feature)
 
         self.addFeatures(features, crs)
@@ -61,17 +67,17 @@ class LrsErrorLayerManager(LrsLayerManager):
             return
 
         # delete
-        self.deleteChecksums(errorUpdates['removedErrorChecksums'])
+        self.deleteChecksums(errorUpdates["removedErrorChecksums"])
 
         # update
         features = []
-        for error in errorUpdates['updatedErrors']:
+        for error in errorUpdates["updatedErrors"]:
             if not self.errorTypeMatch(error):
                 continue
 
             feature = LrsErrorFeature(error)
             features.append(feature)
-        self.updateFeatures(features, errorUpdates['crs'])
+        self.updateFeatures(features, errorUpdates["crs"])
 
         # add new
-        self.addErrors(errorUpdates['addedErrors'], errorUpdates['crs'])
+        self.addErrors(errorUpdates["addedErrors"], errorUpdates["crs"])

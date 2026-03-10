@@ -19,8 +19,9 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt5.QtCore import QVariant
-from qgis.core import QgsFields, QgsField
+
+from qgis.core import QgsField, QgsFields
+from qgis.PyQt.QtCore import QVariant
 
 
 class LrsErrorFields(QgsFields):
@@ -28,9 +29,11 @@ class LrsErrorFields(QgsFields):
         super(LrsErrorFields, self).__init__()
 
         fields = [
-            QgsField('error', QVariant.String, "string"),  # error type, avoid 'type' which could be keyword
-            QgsField('route', QVariant.String, "string"),
-            QgsField('measure', QVariant.String, "string"),
+            QgsField(
+                "error", QVariant.String, "string"
+            ),  # error type, avoid 'type' which could be keyword
+            QgsField("route", QVariant.String, "string"),
+            QgsField("measure", QVariant.String, "string"),
         ]
 
         for field in fields:

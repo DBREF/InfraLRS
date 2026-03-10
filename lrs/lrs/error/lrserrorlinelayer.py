@@ -19,11 +19,12 @@
  *                                                                         *
  ***************************************************************************/
 """
-from .lrserrorlayer import LrsErrorLayer
+
 from ..utils import crsString
+from .lrserrorlayer import LrsErrorLayer
 
 
 class LrsErrorLineLayer(LrsErrorLayer):
     def __init__(self, crs):
         uri = "LineString?crs=%s" % crsString(crs)
-        super(LrsErrorLineLayer, self).__init__(uri, 'LRS line errors')
+        super(LrsErrorLineLayer, self).__init__(uri, "LRS line errors")

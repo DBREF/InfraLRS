@@ -40,7 +40,12 @@ class LrsRecord:
         # debug( "LrsRecord.init() milestoneFrom = %s milestoneTo = %s partFrom = %s partTo = %s" % ( milestoneFrom, milestoneTo, partFrom, partTo) )
 
     def __str__(self):
-        return "record %s-%s / %s-%s" % (self.milestoneFrom, self.milestoneTo, self.partFrom, self.partTo)
+        return "record %s-%s / %s-%s" % (
+            self.milestoneFrom,
+            self.milestoneTo,
+            self.partFrom,
+            self.partTo,
+        )
 
     # returns true if measure is within open interval (milestoneFrom,milestoneTo)
     # i.e. milestoneFrom < measure < milestoneTo
@@ -87,7 +92,10 @@ class LrsRecord:
     # True if nextRecord continues measure without gap in both milestone
     # and part measures
     def continues(self, nextRecord):
-        return nextRecord.milestoneFrom == self.milestoneTo and nextRecord.partFrom == self.partTo
+        return (
+            nextRecord.milestoneFrom == self.milestoneTo
+            and nextRecord.partFrom == self.partTo
+        )
 
     def milestonesDistance(self):
-        return abs(self.milestoneTo-self.milestoneFrom)
+        return abs(self.milestoneTo - self.milestoneFrom)

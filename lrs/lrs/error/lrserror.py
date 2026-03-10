@@ -19,13 +19,15 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from hashlib import md5
 
-from ..utils import *
+from qgis.core import QgsGeometry
+from qgis.PyQt.QtCore import QObject
 
 
 # Origin of geometry part used for error checksums, it allows to update errors when
-# geometry is changed, but error remains. 
+# geometry is changed, but error remains.
 # The identification by origin unfortunately fails if geometry part is deleted and thus
 # geoPart numbers are changed. That is why there is also nGeoParts
 # Class representing error in LRS
@@ -49,14 +51,14 @@ class LrsError(QObject):
         super(LrsError, self).__init__()
         self.type = type
         self.geo = QgsGeometry(geo)  # store copy of QgsGeometry
-        self.message = kwargs.get('message', '')
-        self.routeId = kwargs.get('routeId', None)
-        self.measure = kwargs.get('measure', None)  # may be list !
+        self.message = kwargs.get("message", "")
+        self.routeId = kwargs.get("routeId", None)
+        self.measure = kwargs.get("measure", None)  # may be list !
         # self.lineFid = kwargs.get('lineFid', None)
         # self.pointFid = kwargs.get('pointFid', None) # may be list !
         # multigeometry part
         # self.geoPart = kwargs.get('geoPart', None) # may be list !
-        self.origins = kwargs.get('origins', [])  # list of LrsOrigin
+        self.origins = kwargs.get("origins", [])  # list of LrsOrigin
 
         # checksum cache
         self.originChecksum_ = None
@@ -65,32 +67,38 @@ class LrsError(QObject):
 
         # initialized here to allow stranslation, how to translate static variables?
         self.typeLabels = {
-            self.DUPLICATE_LINE: self.tr('Duplicate line'),
-            self.DUPLICATE_POINT: self.tr('Duplicate point'),
-            self.FORK: self.tr('Fork'),
-            self.ORPHAN: self.tr('Orphan point'),
-            self.OUTSIDE_THRESHOLD: self.tr('Out of threshold'),
-            self.NOT_ENOUGH_MILESTONES: self.tr('Not enough points'),
-            self.NO_ROUTE_ID: self.tr('Missing route id'),
-            self.NO_MEASURE: self.tr('Missing measure'),
-            self.DIRECTION_GUESS: self.tr('Cannot guess direction'),
-            self.WRONG_MEASURE: self.tr('Wrong measure'),
-            self.DUPLICATE_REFERENCING: self.tr('Duplicate referencing'),
-            self.PARALLEL: self.tr('Parallel line'),
-            self.FORK_LINE: self.tr('Fork line'),
+            self.DUPLICATE_LINE: self.tr("Duplicate line"),
+            self.DUPLICATE_POINT: self.tr("Duplicate point"),
+            self.FORK: self.tr("Fork"),
+            self.ORPHAN: self.tr("Orphan point"),
+            self.OUTSIDE_THRESHOLD: self.tr("Out of threshold"),
+            self.NOT_ENOUGH_MILESTONES: self.tr("Not enough points"),
+            self.NO_ROUTE_ID: self.tr("Missing route id"),
+            self.NO_MEASURE: self.tr("Missing measure"),
+            self.DIRECTION_GUESS: self.tr("Cannot guess direction"),
+            self.WRONG_MEASURE: self.tr("Wrong measure"),
+            self.DUPLICATE_REFERENCING: self.tr("Duplicate referencing"),
+            self.PARALLEL: self.tr("Parallel line"),
+            self.FORK_LINE: self.tr("Fork line"),
         }
 
     def __str__(self):
-        return "error: %s %s %s %s %s" % (self.type, self.typeLabel(), self.message, self.routeId, self.measure)
+        return "error: %s %s %s %s %s" % (
+            self.type,
+            self.typeLabel(),
+            self.message,
+            self.routeId,
+            self.measure,
+        )
 
     def typeLabel(self):
-        if not self.type in self.typeLabels:
+        if self.type not in self.typeLabels:
             return "Unknown error"
         return self.typeLabels[self.type]
 
     # get string of simple value or list
     def getValueString(self, value):
-        if value == None:
+        if value is None:
             return ""
         elif isinstance(value, list):
             vals = list(value)
@@ -123,7 +131,7 @@ class LrsError(QObject):
 
         return self.originChecksum_
 
-    # base checksum, mostly using origin, maybe used to update errors, 
+    # base checksum, mostly using origin, maybe used to update errors,
     # calculation depends on error type
     def getChecksum(self):
         if not self.checksum_:
@@ -170,4 +178,3 @@ class LrsError(QObject):
         # m = md5( s )
         # self.fullChecksum_ = m.digest()
         # return self.fullChecksum_
-

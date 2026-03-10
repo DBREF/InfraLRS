@@ -20,9 +20,14 @@
  ***************************************************************************/
 """
 
-from qgis.PyQt.QtCore import *
-from qgis.PyQt.QtWidgets import *
 from qgis.core import NULL
+from qgis.PyQt.QtCore import Qt, QVariant
+from qgis.PyQt.QtWidgets import (
+    QDialog,
+    QTableView,
+    QTableWidgetItem,
+    QTableWidgetSelectionRange,
+)
 
 from .ui_selectiondialog import Ui_LrsSelectionDialog
 
@@ -44,14 +49,15 @@ class LrsSelectionDialog(QDialog, Ui_LrsSelectionDialog):
         # self.proxy.setSourceModel( self.model )
 
         self.tableWidget.insertColumn(0)
-        self.tableWidget.setHorizontalHeaderItem(0, QTableWidgetItem('Route'))
+        self.tableWidget.setHorizontalHeaderItem(0, QTableWidgetItem("Route"))
         self.tableWidget.setSelectionMode(QTableView.ExtendedSelection)
 
     # select is list of values to be selected
     def load(self, layer, fieldName, select):
         while self.tableWidget.rowCount() > 0:
             self.tableWidget.removeRow(0)
-        if not layer or not fieldName: return
+        if not layer or not fieldName:
+            return
 
         field = layer.fields().field(fieldName)
         if not field:
@@ -63,18 +69,20 @@ class LrsSelectionDialog(QDialog, Ui_LrsSelectionDialog):
             values.add(value)
 
         if field.type() == QVariant.String:
-            values = sorted(values, key=lambda s: s.lower() if s != NULL else '')
+            values = sorted(values, key=lambda s: s.lower() if s != NULL else "")
         else:
             values = sorted(values)
 
         for i in range(len(values)):
-            strValue = '%s' % values[i]
+            strValue = "%s" % values[i]
             item = QTableWidgetItem(strValue)
             item.setData(Qt.UserRole, values[i])
             self.tableWidget.insertRow(i)
             self.tableWidget.setItem(i, 0, item)
             if strValue in select:
-                self.tableWidget.setRangeSelected(QTableWidgetSelectionRange(i, 0, i, 0), True)
+                self.tableWidget.setRangeSelected(
+                    QTableWidgetSelectionRange(i, 0, i, 0), True
+                )
 
     def selected(self):
         selected = []

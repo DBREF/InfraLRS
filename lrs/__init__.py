@@ -24,7 +24,9 @@
 
 def classFactory(iface):
     from .lrsplugin import LrsPlugin
+
     return LrsPlugin(iface)
+
 
 # def name():
 #     return "LRS"
@@ -52,4 +54,3 @@ def classFactory(iface):
 #
 # def email():
 #     return "radim.blazek@gmail.com"
-

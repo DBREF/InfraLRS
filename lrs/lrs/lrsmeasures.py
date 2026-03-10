@@ -19,7 +19,20 @@
  *                                                                         *
  ***************************************************************************/
 """
-from .utils import *
+
+from qgis.core import (
+    QgsCoordinateTransform,
+    QgsFeature,
+    QgsField,
+    QgsGeometry,
+    QgsProject,
+    QgsProviderRegistry,
+    QgsVectorLayer,
+    QgsWkbTypes,
+)
+from qgis.PyQt.QtCore import QObject, QVariant
+
+from .utils import checkFields, crsString, fixFields
 
 # Note that there is QgsGeometryAnalyzer.eventLayer() working with low level WKB (z coordinates)
 
@@ -32,7 +45,15 @@ class LrsMeasures(QObject):
         self.lrs = lrs  # Lrs object
         self.progressBar = progressBar
 
-    def calculate(self, layer, routeFieldName, outputRouteFieldName, measureFieldName, threshold, outputName):
+    def calculate(
+        self,
+        layer,
+        routeFieldName,
+        outputRouteFieldName,
+        measureFieldName,
+        threshold,
+        outputName,
+    ):
         # get the  lrs layer's route field, to obtain its type
         lrsFields = self.lrs.layer.fields()
         lrsRouteField = lrsFields.at(lrsFields.indexFromName(self.lrs.routeFieldName))
@@ -41,17 +62,21 @@ class LrsMeasures(QObject):
         # it may happen that memory provider does not support all fields types, see #10, check if fields exists
         # uri = "Point?crs=%s" %  crsString ( self.iface.mapCanvas().mapSettings().destinationCrs() )
         uri = "Point?crs=%s" % crsString(layer.crs())
-        provider = QgsProviderRegistry.instance().createProvider('memory', uri)
+        provider = QgsProviderRegistry.instance().createProvider("memory", uri)
         fieldsList = layer.fields().toList()
         fixFields(fieldsList)
         provider.addAttributes(fieldsList)
-        provider.addAttributes([
-            QgsField(outputRouteFieldName, lrsRouteField.type(), lrsRouteField.typeName()),
-            QgsField(measureFieldName, QVariant.Double, "double"),
-        ])
+        provider.addAttributes(
+            [
+                QgsField(
+                    outputRouteFieldName, lrsRouteField.type(), lrsRouteField.typeName()
+                ),
+                QgsField(measureFieldName, QVariant.Double, "double"),
+            ]
+        )
 
         uri = provider.dataSourceUri()
-        outputLayer = QgsVectorLayer(uri, outputName, 'memory')
+        outputLayer = QgsVectorLayer(uri, outputName, "memory")
 
         checkFields(layer, outputLayer)
 
@@ -71,7 +96,9 @@ class LrsMeasures(QObject):
         count = 0
         transform = None
         if layer.crs() != self.lrs.crs:
-            transform = QgsCoordinateTransform(layer.crs(), self.lrs.crs, QgsProject.instance())
+            transform = QgsCoordinateTransform(
+                layer.crs(), self.lrs.crs, QgsProject.instance()
+            )
         for feature in layer.getFeatures():
             featureRouteId = None
             points = []
@@ -92,7 +119,9 @@ class LrsMeasures(QObject):
                     featureRoute = self.lrs.getRouteIfExists(featureRouteId)
 
             for point in points:
-                outputFeature = QgsFeature(fields)  # fields must exist during feature life!
+                outputFeature = QgsFeature(
+                    fields
+                )  # fields must exist during feature life!
                 outputFeature.setGeometry(QgsGeometry.fromPointXY(point))
 
                 for field in layer.fields():
@@ -106,7 +135,11 @@ class LrsMeasures(QObject):
                 # measure along it
                 if featureRouteId is not None:
                     routeId = featureRouteId
-                    measure = featureRoute.pointMeasure(point) if featureRoute is not None else None
+                    measure = (
+                        featureRoute.pointMeasure(point)
+                        if featureRoute is not None
+                        else None
+                    )
                 else:
                     routeId, measure = self.lrs.pointMeasure(point, threshold)
                 # debug ( "routeId = %s merasure = %s" % (routeId, measure) )
@@ -123,6 +156,10 @@ class LrsMeasures(QObject):
 
         outputLayer.dataProvider().addFeatures(outputFeatures)
 
-        QgsProject.instance().addMapLayers([outputLayer, ])
+        QgsProject.instance().addMapLayers(
+            [
+                outputLayer,
+            ]
+        )
 
         self.progressBar.hide()

@@ -19,6 +19,7 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from .lrserrorfields import LRS_ERROR_FIELDS
 from .lrsfeature import LrsFeature
 
@@ -31,9 +32,9 @@ class LrsErrorFeature(LrsFeature):
         self.checksum = error.getChecksum()
 
         values = {
-            'error': error.typeLabel(),
-            'route': '%s' % error.routeId,
-            'measure': error.getMeasureString()
+            "error": error.typeLabel(),
+            "route": "%s" % error.routeId,
+            "measure": error.getMeasureString(),
         }
         for name, value in values.items():
             self.setAttribute(name, value)
@@ -42,7 +43,7 @@ class LrsErrorFeature(LrsFeature):
         attributes = []
         for i in range(len(self.fields())):
             name = self.fields()[i].name()
-            attributes.append( "%s:%s" % ( name, self.attribute(name) ) )
+            attributes.append("%s:%s" % (name, self.attribute(name)))
         s = "errorFeature: " + " ".join(attributes)
         if self.geometry():
             s += " " + self.geometry().exportToWkt()
