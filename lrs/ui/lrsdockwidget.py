@@ -886,6 +886,11 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
     def isCalibrated(self):
         return self.lrs is not None and self.lrs.isCalibrated()
 
+    def enableTabs(self):
+        calibrated = self.isCalibrated()
+        for tab in [self.locateTab, self.eventsTab, self.measureTab]:
+            self.tabWidget.setTabEnabled(self.tabWidget.indexOf(tab), calibrated)
+
     def resetGenButtons(self):
         self.genCreateOutputButton.setEnabled(
             self.isCalibrated() and len(self.genOutputNameLineEdit.text().strip()) > 0
