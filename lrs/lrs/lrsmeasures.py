@@ -21,6 +21,7 @@
 """
 
 from qgis.core import (
+    NULL,
     QgsCoordinateTransform,
     QgsFeature,
     QgsField,
@@ -30,8 +31,9 @@ from qgis.core import (
     QgsVectorLayer,
     QgsWkbTypes,
 )
-from qgis.PyQt.QtCore import QObject, QVariant
+from qgis.PyQt.QtCore import QObject
 
+from .compat import QVARIANT_DOUBLE
 from .utils import checkFields, crsString, fixFields
 
 # Note that there is QgsGeometryAnalyzer.eventLayer() working with low level WKB (z coordinates)
@@ -71,7 +73,7 @@ class LrsMeasures(QObject):
                 QgsField(
                     outputRouteFieldName, lrsRouteField.type(), lrsRouteField.typeName()
                 ),
-                QgsField(measureFieldName, QVariant.Double, "double"),
+                QgsField(measureFieldName, QVARIANT_DOUBLE, "double"),
             ]
         )
 
@@ -113,7 +115,7 @@ class LrsMeasures(QObject):
             # fetch the route, if any, specified by the feature
             if routeFieldName is not None:
                 featureRouteId = feature[routeFieldName]
-                if (type(featureRouteId) is QVariant) and featureRouteId.isNull():
+                if featureRouteId is None or featureRouteId == NULL:
                     featureRouteId = None
                 else:
                     featureRoute = self.lrs.getRouteIfExists(featureRouteId)

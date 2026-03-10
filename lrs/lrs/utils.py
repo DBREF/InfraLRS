@@ -31,10 +31,19 @@ from qgis.core import (
     QgsPointXY,
     QgsProject,
 )
-from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QMessageBox
 
-from .compat import DIST_FEET, DIST_METERS
+from .compat import (
+    DIST_FEET,
+    DIST_METERS,
+    QVARIANT_DOUBLE,
+    QVARIANT_INT,
+    QVARIANT_LONGLONG,
+    QVARIANT_NUMBER_TYPES,
+    QVARIANT_STRING,
+    QVARIANT_UINT,
+    QVARIANT_ULONGLONG,
+)
 
 # name of plugin in project file
 PROJECT_PLUGIN_NAME = "lrs"
@@ -43,13 +52,7 @@ PROJECT_PLUGIN_NAME = "lrs"
 ALL_FEATURES = "all"
 SELECTED_FEATURES = "selected"
 
-QVARIANT_NUMBER_TYPE_LIST = [
-    QVariant.Int,
-    QVariant.UInt,
-    QVariant.LongLong,
-    QVariant.ULongLong,
-    QVariant.Double,
-]
+QVARIANT_NUMBER_TYPE_LIST = list(QVARIANT_NUMBER_TYPES)
 
 
 class LrsUnits:
@@ -343,17 +346,17 @@ def getProjectCrs():
 def fixFields(fieldsList):
     for field in fieldsList:
         # debug("fixFields %s %s %s" % (field.name(), field.typeName(), QVariant.typeToName(field.type())))
-        if field.type() == QVariant.String:
+        if field.type() == QVARIANT_STRING:
             field.setTypeName("string")
-        elif field.type() == QVariant.UInt:
+        elif field.type() == QVARIANT_UINT:
             field.setTypeName("int")
-        elif field.type() == QVariant.Int:
+        elif field.type() == QVARIANT_INT:
             field.setTypeName("int")
-        elif field.type() == QVariant.LongLong:
+        elif field.type() == QVARIANT_LONGLONG:
             field.setTypeName("int8")
-        elif field.type() == QVariant.ULongLong:
+        elif field.type() == QVARIANT_ULONGLONG:
             field.setTypeName("int8")
-        elif field.type() == QVariant.Double:
+        elif field.type() == QVARIANT_DOUBLE:
             field.setTypeName("double")
 
         if field.length() < 0:

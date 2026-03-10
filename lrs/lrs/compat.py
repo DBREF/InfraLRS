@@ -101,3 +101,40 @@ except AttributeError:
     DIALOG_OK = QDialogButtonBox.Ok
     DIALOG_RESET = QDialogButtonBox.Reset
     DIALOG_HELP = QDialogButtonBox.Help
+
+# ── QVariant.Type → QMetaType.Type (Qt 6 / PyQt6) ────────────────────────────
+# In Qt 6, QVariant::Type was removed in favour of QMetaType::Type.
+# PyQt6 exposes these as QMetaType.Type.<name>; PyQt5 exposes them as
+# QVariant.<name>.  The integer values are identical, but the attribute names
+# on the Python objects differ.
+try:
+    # PyQt6 / Qt 6
+    from qgis.PyQt.QtCore import QMetaType
+
+    QVARIANT_INT = QMetaType.Type.Int
+    QVARIANT_UINT = QMetaType.Type.UInt
+    QVARIANT_LONGLONG = QMetaType.Type.LongLong
+    QVARIANT_ULONGLONG = QMetaType.Type.ULongLong
+    QVARIANT_DOUBLE = QMetaType.Type.Double
+    QVARIANT_STRING = QMetaType.Type.QString
+    QVARIANT_BOOL = QMetaType.Type.Bool
+except (ImportError, AttributeError):
+    # PyQt5 / Qt 5 — QVariant.Type values
+    from qgis.PyQt.QtCore import QVariant as _QVariant
+
+    QVARIANT_INT = _QVariant.Int
+    QVARIANT_UINT = _QVariant.UInt
+    QVARIANT_LONGLONG = _QVariant.LongLong
+    QVARIANT_ULONGLONG = _QVariant.ULongLong
+    QVARIANT_DOUBLE = _QVariant.Double
+    QVARIANT_STRING = _QVariant.String
+    QVARIANT_BOOL = _QVariant.Bool
+
+# Convenience list of numeric field types (replaces QVARIANT_NUMBER_TYPE_LIST)
+QVARIANT_NUMBER_TYPES = {
+    QVARIANT_INT,
+    QVARIANT_UINT,
+    QVARIANT_LONGLONG,
+    QVARIANT_ULONGLONG,
+    QVARIANT_DOUBLE,
+}

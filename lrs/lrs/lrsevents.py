@@ -21,6 +21,7 @@
 """
 
 from qgis.core import (
+    NULL,
     QgsFeature,
     QgsField,
     QgsGeometry,
@@ -29,9 +30,10 @@ from qgis.core import (
     QgsProviderRegistry,
     QgsVectorLayer,
 )
-from qgis.PyQt.QtCore import QObject, QVariant
+from qgis.PyQt.QtCore import QObject
 from qgis.PyQt.QtWidgets import QMessageBox
 
+from .compat import QVARIANT_STRING
 from .utils import SELECTED_FEATURES, checkFields, crsString, fixFields
 
 
@@ -45,7 +47,7 @@ class LrsEvents(QObject):
 
     @staticmethod
     def is_null(value):
-        return value is None or (isinstance(value, QVariant) and value.isNull())
+        return value is None or value == NULL
 
     def create(
         self,
@@ -72,7 +74,7 @@ class LrsEvents(QObject):
         if errorFieldName:
             provider.addAttributes(
                 [
-                    QgsField(errorFieldName, QVariant.String, "string"),
+                    QgsField(errorFieldName, QVARIANT_STRING, "string"),
                 ]
             )
         uri = provider.dataSourceUri()

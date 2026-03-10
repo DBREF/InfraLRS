@@ -21,14 +21,13 @@
 """
 
 from qgis.core import NULL
-from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import (
     QDialog,
     QTableWidgetItem,
     QTableWidgetSelectionRange,
 )
 
-from ..lrs.compat import ITEM_DATA_ROLE_USER, SELECTION_MODE_EXTENDED
+from ..lrs.compat import ITEM_DATA_ROLE_USER, QVARIANT_STRING, SELECTION_MODE_EXTENDED
 from .ui_selectiondialog import Ui_LrsSelectionDialog
 
 
@@ -68,7 +67,7 @@ class LrsSelectionDialog(QDialog, Ui_LrsSelectionDialog):
             value = feature[fieldName]
             values.add(value)
 
-        if field.type() == QVariant.String:
+        if field.type() == QVARIANT_STRING:
             values = sorted(values, key=lambda s: s.lower() if s != NULL else "")
         else:
             values = sorted(values)

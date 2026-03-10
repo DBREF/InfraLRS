@@ -27,8 +27,15 @@ from qgis.core import (
     QgsProviderRegistry,
     QgsVectorLayer,
 )
-from qgis.PyQt.QtCore import QObject, QVariant
+from qgis.PyQt.QtCore import QObject
 
+from .compat import (
+    QVARIANT_DOUBLE,
+    QVARIANT_INT,
+    QVARIANT_LONGLONG,
+    QVARIANT_UINT,
+    QVARIANT_ULONGLONG,
+)
 from .utils import crsString
 
 
@@ -53,20 +60,20 @@ class LrsOutput(QObject):
         routeFieldName = routeField.name()
         routeFieldType = "string"
         if (
-            routeField.type() == QVariant.Int
-            or routeField.type() == QVariant.UInt
-            or routeField.type() == QVariant.LongLong
-            or routeField.type() == QVariant.ULongLong
+            routeField.type() == QVARIANT_INT
+            or routeField.type() == QVARIANT_UINT
+            or routeField.type() == QVARIANT_LONGLONG
+            or routeField.type() == QVARIANT_ULONGLONG
         ):
             routeFieldType = "int"
-        elif routeField.type() == QVariant.Double:
+        elif routeField.type() == QVARIANT_DOUBLE:
             routeFieldType = "double"
 
         provider.addAttributes(
             [
                 QgsField(routeFieldName, routeField.type(), routeFieldType),
-                QgsField("m_from", QVariant.Double, "double"),
-                QgsField("m_to", QVariant.Double, "double"),
+                QgsField("m_from", QVARIANT_DOUBLE, "double"),
+                QgsField("m_to", QVARIANT_DOUBLE, "double"),
             ]
         )
         uri = provider.dataSourceUri()
@@ -88,8 +95,8 @@ class LrsOutput(QObject):
                 continue
 
             if (
-                routeField.type() == QVariant.Int
-                or routeField.type() == QVariant.Double
+                routeField.type() == QVARIANT_INT
+                or routeField.type() == QVARIANT_DOUBLE
             ):
                 routeVal = part.routeId
             else:
