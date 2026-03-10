@@ -26,11 +26,10 @@ from qgis.core import (
     QgsProject,
     QgsRectangle,
     QgsVectorLayer,
-    QgsWkbTypes,
 )
 from qgis.gui import QgsHighlight
-from qgis.PyQt.QtCore import Qt
 
+from ..compat import COLOR_YELLOW, GEO_POINT
 from ..utils import crsString, getProjectCrs, isProjectCrsEnabled
 
 
@@ -61,7 +60,7 @@ class LrsErrorVisualizer(object):
         self.errorHighlight = QgsHighlight(self.mapCanvas, error.geo, layer)
         # highlight point size is hardcoded in QgsHighlight
         self.errorHighlight.setWidth(2)
-        self.errorHighlight.setColor(Qt.yellow)
+        self.errorHighlight.setColor(COLOR_YELLOW)
         self.errorHighlight.show()
 
     def zoom(self, error, crs):
@@ -75,7 +74,7 @@ class LrsErrorVisualizer(object):
             )
             geo.transform(transform)
 
-        if geo.type() == QgsWkbTypes.PointGeometry:
+        if geo.type() == GEO_POINT:
             p = geo.asPoint()
             bufferCrs = getProjectCrs() if isProjectCrsEnabled() else crs
             b = 2000 if not bufferCrs.isGeographic() else 2000 / 100000  # buffer

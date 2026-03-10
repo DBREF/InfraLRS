@@ -22,6 +22,8 @@
 
 from qgis.PyQt.QtCore import QAbstractTableModel, QModelIndex, Qt
 
+from ..compat import ITEM_DATA_ROLE_DISPLAY, ORIENTATION_HORIZONTAL
+
 
 class LrsErrorModel(QAbstractTableModel):
     TYPE_COL = 0
@@ -40,10 +42,10 @@ class LrsErrorModel(QAbstractTableModel):
         super(LrsErrorModel, self).__init__()
         self.errors = []
 
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if not Qt or role != Qt.DisplayRole:
+    def headerData(self, section, orientation, role=None):
+        if not Qt or role != ITEM_DATA_ROLE_DISPLAY:
             return None
-        if orientation == Qt.Horizontal:
+        if orientation == ORIENTATION_HORIZONTAL:
             if section in self.headerLabels:
                 return self.headerLabels[section]
             else:
@@ -58,7 +60,7 @@ class LrsErrorModel(QAbstractTableModel):
         return 3
 
     def data(self, index, role):
-        if role != Qt.DisplayRole:
+        if role != ITEM_DATA_ROLE_DISPLAY:
             return None
 
         error = self.getError(index)

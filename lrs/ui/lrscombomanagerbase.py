@@ -24,15 +24,11 @@
 """
 
 # Import the PyQt and QGIS libraries
-from qgis.PyQt.QtGui import (
-    QgsProject,
-    QObject,
-    QSortFilterProxyModel,
-    QStandardItem,
-    QStandardItemModel,
-    Qt,
-)
+from qgis.core import QgsProject
+from qgis.PyQt.QtCore import QObject, QSortFilterProxyModel
+from qgis.PyQt.QtGui import QStandardItem, QStandardItemModel
 
+from ..lrs.compat import ITEM_DATA_ROLE_USER
 from ..lrs.utils import PROJECT_PLUGIN_NAME, debug
 
 
@@ -103,18 +99,18 @@ class LrsComboManagerBase(QObject):
         if options:
             for opt in options:
                 item = QStandardItem(opt[1])
-                item.setData(opt[0], Qt.UserRole)
+                item.setData(opt[0], ITEM_DATA_ROLE_USER)
                 self.model.appendRow(item)
 
     def value(self):
         idx = self.comboList[0].currentIndex()
         if idx != -1:
-            return self.comboList[0].itemData(idx, Qt.UserRole)
+            return self.comboList[0].itemData(idx, ITEM_DATA_ROLE_USER)
         return None
 
     def writeToProject(self):
         idx = self.comboList[0].currentIndex()
-        val = self.comboList[0].itemData(idx, Qt.UserRole)
+        val = self.comboList[0].itemData(idx, ITEM_DATA_ROLE_USER)
         # self.debug("writeToProject val = %s" % val)
         QgsProject.instance().writeEntry(PROJECT_PLUGIN_NAME, self.settingsName, val)
 
@@ -126,17 +122,17 @@ class LrsComboManagerBase(QObject):
         # self.debug("readFromProject val = %s" % val)
 
         for combo in self.comboList:
-            idx = combo.findData(val, Qt.UserRole)
+            idx = combo.findData(val, ITEM_DATA_ROLE_USER)
             # debug( "readFromProject settingsName = %s val = %s idx = %s" % ( self.settingsName, val, idx) )
             if idx == -1:
-                idx = combo.findData(self.defaultValue, Qt.UserRole)
+                idx = combo.findData(self.defaultValue, ITEM_DATA_ROLE_USER)
             combo.setCurrentIndex(idx)
 
     # reset to index -1
     def reset(self):
         for combo in self.comboList:
             if self.defaultValue is not None:
-                idx = combo.findData(self.defaultValue, Qt.UserRole)
+                idx = combo.findData(self.defaultValue, ITEM_DATA_ROLE_USER)
                 # debug( "defaultValue = %s idx = %s" % ( self.defaultValue, idx ) )
                 combo.setCurrentIndex(idx)
             else:
@@ -147,7 +143,7 @@ class LrsComboManagerBase(QObject):
         # (must be reference to the same object?) and with Qt.MatchFixedString it works like with Qt.MatchContains
         # so we do our loop
         for i in range(self.model.rowCount() - 1, -1, -1):
-            itemData = self.model.item(i).data(Qt.UserRole)
+            itemData = self.model.item(i).data(ITEM_DATA_ROLE_USER)
             if itemData == data:
                 return self.model.item(i)
         return None

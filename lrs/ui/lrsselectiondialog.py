@@ -21,14 +21,14 @@
 """
 
 from qgis.core import NULL
-from qgis.PyQt.QtCore import Qt, QVariant
+from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import (
     QDialog,
-    QTableView,
     QTableWidgetItem,
     QTableWidgetSelectionRange,
 )
 
+from ..lrs.compat import ITEM_DATA_ROLE_USER, SELECTION_MODE_EXTENDED
 from .ui_selectiondialog import Ui_LrsSelectionDialog
 
 
@@ -50,7 +50,7 @@ class LrsSelectionDialog(QDialog, Ui_LrsSelectionDialog):
 
         self.tableWidget.insertColumn(0)
         self.tableWidget.setHorizontalHeaderItem(0, QTableWidgetItem("Route"))
-        self.tableWidget.setSelectionMode(QTableView.ExtendedSelection)
+        self.tableWidget.setSelectionMode(SELECTION_MODE_EXTENDED)
 
     # select is list of values to be selected
     def load(self, layer, fieldName, select):
@@ -76,7 +76,7 @@ class LrsSelectionDialog(QDialog, Ui_LrsSelectionDialog):
         for i in range(len(values)):
             strValue = "%s" % values[i]
             item = QTableWidgetItem(strValue)
-            item.setData(Qt.UserRole, values[i])
+            item.setData(ITEM_DATA_ROLE_USER, values[i])
             self.tableWidget.insertRow(i)
             self.tableWidget.setItem(i, 0, item)
             if strValue in select:
@@ -87,5 +87,5 @@ class LrsSelectionDialog(QDialog, Ui_LrsSelectionDialog):
     def selected(self):
         selected = []
         for item in self.tableWidget.selectedItems():
-            selected.append(item.data(Qt.UserRole))
+            selected.append(item.data(ITEM_DATA_ROLE_USER))
         return selected

@@ -22,10 +22,11 @@
 
 import os.path
 
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, qVersion
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, QTranslator, qVersion
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
+from .lrs.compat import DOCK_RIGHT
 from .ui.lrsdockwidget import LrsDockWidget
 
 
@@ -69,7 +70,7 @@ class LrsPlugin:
         # Create the docked panel
         # print "self.iface.mainWindow = %s" % self.iface.mainWindow()
         self.dockWidget = LrsDockWidget(self.iface.mainWindow(), self.iface)
-        self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockWidget)
+        self.iface.addDockWidget(DOCK_RIGHT, self.dockWidget)
         self.dockWidget.restoreWidgetGeometry()  # does not work here on plugin reload by reloader
 
     def unload(self):

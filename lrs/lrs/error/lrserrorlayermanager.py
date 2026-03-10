@@ -20,8 +20,7 @@
  ***************************************************************************/
 """
 
-from qgis.core import QgsWkbTypes
-
+from ..compat import GEO_LINE, GEO_POINT
 from .lrserrorfeature import LrsErrorFeature
 from .lrslayermanager import LrsLayerManager
 
@@ -32,15 +31,9 @@ class LrsErrorLayerManager(LrsLayerManager):
 
     # test if error geometry type matches this layer
     def errorTypeMatch(self, error):
-        if (
-            self.layer.geometryType() == QgsWkbTypes.PointGeometry
-            and error.geo.type() != QgsWkbTypes.PointGeometry
-        ):
+        if self.layer.geometryType() == GEO_POINT and error.geo.type() != GEO_POINT:
             return False
-        if (
-            self.layer.geometryType() == QgsWkbTypes.LineGeometry
-            and error.geo.type() != QgsWkbTypes.LineGeometry
-        ):
+        if self.layer.geometryType() == GEO_LINE and error.geo.type() != GEO_LINE:
             return False
         return True
 

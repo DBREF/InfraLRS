@@ -22,8 +22,9 @@
 
 import sys
 
-from qgis.core import QgsGeometry, QgsLineString, QgsPoint, QgsUnitTypes, QgsWkbTypes
+from qgis.core import QgsGeometry, QgsLineString, QgsPoint
 
+from .compat import DIST_METERS, GEO_POINT
 from .error.lrserror import LrsError
 from .lrsorigin import LrsOrigin
 from .lrspartbase import LrsPartBase
@@ -166,9 +167,7 @@ class LrsCalibPart(LrsPartBase):
                 if scores[i] == minScore:
                     m = milestones[i]
                     geo = QgsGeometry.fromPointXY(m.pnt)
-                    origin = LrsOrigin(
-                        QgsWkbTypes.PointGeometry, m.fid, m.geoPart, m.nGeoParts
-                    )
+                    origin = LrsOrigin(GEO_POINT, m.fid, m.geoPart, m.nGeoParts)
                     self.errors.append(
                         LrsError(
                             LrsError.WRONG_MEASURE,
@@ -201,7 +200,7 @@ class LrsCalibPart(LrsPartBase):
             polylineXY = polylineXYSegmentXY(self.polyline, partFrom, partTo)
             geo = QgsGeometry.fromPolylineXY(polylineXY)
             length = self.distanceArea.measureLength(geo)
-            qgisUnit = QgsUnitTypes.DistanceMeters
+            qgisUnit = DIST_METERS
         else:
             length = partTo - partFrom
             qgisUnit = self.crs.mapUnits()

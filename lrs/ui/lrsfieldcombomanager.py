@@ -21,9 +21,10 @@
 """
 
 from qgis.core import QgsProject
-from qgis.PyQt.QtCore import Qt, pyqtSignal
+from qgis.PyQt.QtCore import pyqtSignal
 from qgis.PyQt.QtGui import QStandardItem
 
+from ..lrs.compat import ITEM_DATA_ROLE_USER
 from .lrscombomanagerbase import LrsComboManagerBase
 
 
@@ -51,7 +52,7 @@ class LrsFieldComboManager(LrsComboManagerBase):
     def getFieldName(self):
         idx = self.comboList[0].currentIndex()
         if idx != -1:
-            return self.comboList[0].itemData(idx, Qt.UserRole)
+            return self.comboList[0].itemData(idx, ITEM_DATA_ROLE_USER)
         return None
 
     def disconnectFromLayer(self):
@@ -92,7 +93,7 @@ class LrsFieldComboManager(LrsComboManagerBase):
             item = self.findItemByData(None)
             if not item:
                 item = QStandardItem("-----")
-                item.setData(None, Qt.UserRole)
+                item.setData(None, ITEM_DATA_ROLE_USER)
                 self.model.appendRow(item)
 
         fieldsNames = []
@@ -103,7 +104,7 @@ class LrsFieldComboManager(LrsComboManagerBase):
 
         # delete removed
         for i in range(self.model.rowCount() - 1, -1, -1):
-            fieldName = self.model.item(i).data(Qt.UserRole)
+            fieldName = self.model.item(i).data(ITEM_DATA_ROLE_USER)
             if self.allowNone and fieldName is None:
                 continue
             if fieldName not in fieldsNames:
@@ -120,7 +121,7 @@ class LrsFieldComboManager(LrsComboManagerBase):
             item = self.findItemByData(fieldName)
             if not item:  # add new
                 item = QStandardItem(fieldLabel)
-                item.setData(fieldName, Qt.UserRole)
+                item.setData(fieldName, ITEM_DATA_ROLE_USER)
                 self.model.appendRow(item)
             else:  # update text
                 item.setText(fieldLabel)

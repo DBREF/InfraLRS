@@ -27,10 +27,10 @@ from qgis.core import (
     QgsDistanceArea,
     QgsField,
     QgsProject,
-    QgsUnitTypes,
 )
 from qgis.PyQt.QtCore import pyqtSignal
 
+from .compat import DIST_DEGREES
 from .lrsbase import LrsBase
 from .lrscalibroute import LrsCalibRoute
 from .lrsline import LrsLine
@@ -96,7 +96,7 @@ class LrsCalib(LrsBase):
         self.distanceArea.setSourceCrs(
             self.crs, QgsProject.instance().transformContext()
         )
-        if self.crs.mapUnits() == QgsUnitTypes.DistanceDegrees:
+        if self.crs.mapUnits() == DIST_DEGREES:
             ellipsoid = self.crs.ellipsoidAcronym()
             if not ellipsoid:
                 ellipsoid = "WGS84"

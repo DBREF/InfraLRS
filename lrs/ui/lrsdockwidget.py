@@ -28,28 +28,35 @@ from qgis.core import (
     QgsProject,
     QgsRectangle,
     QgsSettings,
-    QgsUnitTypes,
     QgsVectorLayer,
-    QgsWkbTypes,
 )
 from qgis.gui import QgsHighlight
 from qgis.PyQt.QtCore import (
     QByteArray,
     QCoreApplication,
     QFileInfo,
-    QRegExp,
+    QRegularExpression,
     QSortFilterProxyModel,
-    Qt,
     QUrl,
 )
-from qgis.PyQt.QtGui import QColor, QRegExpValidator
+from qgis.PyQt.QtGui import QColor, QRegularExpressionValidator
 from qgis.PyQt.QtWidgets import (
-    QAbstractItemView,
-    QDialogButtonBox,
     QDockWidget,
-    QTableView,
 )
 
+from ..lrs.compat import (
+    CASE_INSENSITIVE,
+    COLOR_RED,
+    COLOR_YELLOW,
+    DIALOG_HELP,
+    DIALOG_OK,
+    DIALOG_RESET,
+    GEO_LINE,
+    GEO_POINT,
+    SELECTION_BEHAVIOR_ROWS,
+    SELECTION_MODE_SINGLE,
+    encodeDistanceUnit,
+)
 from ..lrs.error.lrserrorlayermanager import LrsErrorLayerManager
 from ..lrs.error.lrserrorlinelayer import LrsErrorLineLayer
 from ..lrs.error.lrserrormodel import LrsErrorModel
@@ -134,7 +141,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
 
         self.lrsLayerCM = LrsLayerComboManager(
             lrsLayerComboList,
-            geometryType=QgsWkbTypes.LineGeometry,
+            geometryType=GEO_LINE,
             geometryHasM=True,
             settingsName="lrsLayerId",
         )
@@ -236,16 +243,16 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
             settingsName="eventsErrorField",
             defaultValue="lrs_err",
         )
-        validator = QRegExpValidator(QRegExp("[A-Za-z_][A-Za-z0-9_]+"), None)
+        validator = QRegularExpressionValidator(
+            QRegularExpression("[A-Za-z_][A-Za-z0-9_]+"), None
+        )
         self.eventsErrorFieldLineEdit.setValidator(validator)
 
-        self.eventsButtonBox.button(QDialogButtonBox.Ok).clicked.connect(
-            self.createEvents
-        )
-        self.eventsButtonBox.button(QDialogButtonBox.Reset).clicked.connect(
+        self.eventsButtonBox.button(DIALOG_OK).clicked.connect(self.createEvents)
+        self.eventsButtonBox.button(DIALOG_RESET).clicked.connect(
             self.resetEventsOptionsAndWrite
         )
-        self.eventsButtonBox.button(QDialogButtonBox.Help).clicked.connect(
+        self.eventsButtonBox.button(DIALOG_HELP).clicked.connect(
             lambda: self.showHelp("events")
         )
         self.eventsLayerCombo.currentIndexChanged.connect(self.resetEventsButtons)
@@ -273,7 +280,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         # ----------------------- measureTab ---------------------------
         self.measureLayerCM = LrsLayerComboManager(
             self.measureLayerCombo,
-            geometryType=QgsWkbTypes.PointGeometry,
+            geometryType=GEO_POINT,
             settingsName="measureLayerId",
         )
         self.measureRouteFieldCM = LrsFieldComboManager(
@@ -298,7 +305,9 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
             settingsName="measureOutputRouteField",
             defaultValue="route",
         )
-        validator = QRegExpValidator(QRegExp("[A-Za-z_][A-Za-z0-9_]+"), None)
+        validator = QRegularExpressionValidator(
+            QRegularExpression("[A-Za-z_][A-Za-z0-9_]+"), None
+        )
         self.measureOutputRouteFieldLineEdit.setValidator(validator)
 
         self.measureMeasureFieldWM = LrsWidgetManager(
@@ -308,13 +317,11 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         )
         self.measureMeasureFieldLineEdit.setValidator(validator)
 
-        self.measureButtonBox.button(QDialogButtonBox.Ok).clicked.connect(
-            self.calculateMeasures
-        )
-        self.measureButtonBox.button(QDialogButtonBox.Reset).clicked.connect(
+        self.measureButtonBox.button(DIALOG_OK).clicked.connect(self.calculateMeasures)
+        self.measureButtonBox.button(DIALOG_RESET).clicked.connect(
             self.resetMeasureOptionsAndWrite
         )
-        self.measureButtonBox.button(QDialogButtonBox.Help).clicked.connect(
+        self.measureButtonBox.button(DIALOG_HELP).clicked.connect(
             lambda: self.showHelp("measures")
         )
         self.measureLayerCombo.currentIndexChanged.connect(self.resetMeasureButtons)
@@ -332,7 +339,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         # ------------- genTab -----------------------
         self.genLineLayerCM = LrsLayerComboManager(
             self.genLineLayerCombo,
-            geometryType=QgsWkbTypes.LineGeometry,
+            geometryType=GEO_LINE,
             settingsName="lineLayerId",
         )
         self.genLineRouteFieldCM = LrsFieldComboManager(
@@ -342,7 +349,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         )
         self.genPointLayerCM = LrsLayerComboManager(
             self.genPointLayerCombo,
-            geometryType=QgsWkbTypes.PointGeometry,
+            geometryType=GEO_POINT,
             settingsName="pointLayerId",
         )
         self.genPointRouteFieldCM = LrsFieldComboManager(
@@ -419,11 +426,11 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         )
         self.genSelectionButton.clicked.connect(self.openGenerateSelectionDialog)
 
-        self.genButtonBox.button(QDialogButtonBox.Ok).clicked.connect(self.generateLrs)
-        self.genButtonBox.button(QDialogButtonBox.Reset).clicked.connect(
+        self.genButtonBox.button(DIALOG_OK).clicked.connect(self.generateLrs)
+        self.genButtonBox.button(DIALOG_RESET).clicked.connect(
             self.resetGenerateOptionsAndWrite
         )
-        self.genButtonBox.button(QDialogButtonBox.Help).clicked.connect(
+        self.genButtonBox.button(DIALOG_HELP).clicked.connect(
             lambda: self.showHelp("calibration")
         )
 
@@ -449,7 +456,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
 
         self.addErrorLayersButton.clicked.connect(self.addErrorLayers)
         self.addQualityLayerButton.clicked.connect(self.addQualityLayer)
-        self.errorButtonBox.button(QDialogButtonBox.Help).clicked.connect(
+        self.errorButtonBox.button(DIALOG_HELP).clicked.connect(
             lambda: self.showHelp("errors")
         )
 
@@ -642,7 +649,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
     @staticmethod
     def getUnitsLabel(crs):
         if crs:
-            return " (%s)" % QgsUnitTypes.encodeUnit(crs.mapUnits())
+            return " (%s)" % encodeDistanceUnit(crs.mapUnits())
         else:
             return ""
 
@@ -685,7 +692,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
             and self.genPointMeasureFieldCombo.currentIndex() != -1
         )
 
-        self.genButtonBox.button(QDialogButtonBox.Ok).setEnabled(enabled)
+        self.genButtonBox.button(DIALOG_OK).setEnabled(enabled)
 
     def resetGenerateOptions(self):
         self.genLineLayerCM.reset()
@@ -839,17 +846,17 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
 
         self.sortErrorModel = QSortFilterProxyModel()
         self.sortErrorModel.setFilterKeyColumn(-1)  # all columns
-        self.sortErrorModel.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.sortErrorModel.setFilterCaseSensitivity(CASE_INSENSITIVE)
         self.sortErrorModel.setDynamicSortFilter(True)
         self.sortErrorModel.setSourceModel(self.errorModel)
 
         self.errorView.setModel(self.sortErrorModel)
         self.sortErrorModel.sort(0)
         self.errorView.resizeColumnsToContents()
-        self.errorView.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.errorView.setSelectionBehavior(SELECTION_BEHAVIOR_ROWS)
         # Attention, if selectionMode is QTableView.SingleSelection, selection is not
         # cleared if deleted row was selected (at least one row is always selected)
-        self.errorView.setSelectionMode(QTableView.SingleSelection)
+        self.errorView.setSelectionMode(SELECTION_MODE_SINGLE)
         self.errorView.selectionModel().selectionChanged.connect(
             self.errorSelectionChanged
         )
@@ -946,7 +953,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         if self.errorLineLayer is None:
             self.errorLineLayer = LrsErrorLineLayer(self.lrs.crs)
             self.errorLineLayerManager = LrsErrorLayerManager(self.errorLineLayer)
-            self.errorLineLayer.renderer().symbol().setColor(QColor(Qt.red))
+            self.errorLineLayer.renderer().symbol().setColor(QColor(COLOR_RED))
             self.resetErrorLineLayer()
             QgsProject.instance().addMapLayers(
                 [
@@ -960,7 +967,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         if self.errorPointLayer is None:
             self.errorPointLayer = LrsErrorPointLayer(self.lrs.crs)
             self.errorPointLayerManager = LrsErrorLayerManager(self.errorPointLayer)
-            self.errorPointLayer.renderer().symbol().setColor(QColor(Qt.red))
+            self.errorPointLayer.renderer().symbol().setColor(QColor(COLOR_RED))
             self.resetErrorPointLayer()
             QgsProject.instance().addMapLayers(
                 [
@@ -1137,7 +1144,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
         )
         # highlight point size is hardcoded in QgsHighlight
         self.locateHighlight.setWidth(2)
-        self.locateHighlight.setColor(Qt.yellow)
+        self.locateHighlight.setColor(COLOR_YELLOW)
         self.locateHighlight.show()
 
     def clearLocateHighlight(self):
@@ -1195,7 +1202,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
             and bool(self.eventsOutputNameLineEdit.text())
         )
 
-        self.eventsButtonBox.button(QDialogButtonBox.Ok).setEnabled(enabled)
+        self.eventsButtonBox.button(DIALOG_OK).setEnabled(enabled)
 
     # save settings in project
     def writeEventsOptions(self):
@@ -1280,7 +1287,7 @@ class LrsDockWidget(QDockWidget, Ui_LrsDockWidget):
             and bool(self.measureMeasureFieldLineEdit.text())
         )
 
-        self.measureButtonBox.button(QDialogButtonBox.Ok).setEnabled(enabled)
+        self.measureButtonBox.button(DIALOG_OK).setEnabled(enabled)
 
     # save settings in project
     def writeMeasureOptions(self):

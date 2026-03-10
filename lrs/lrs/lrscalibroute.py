@@ -24,11 +24,11 @@ import operator
 import sys
 from functools import reduce
 
-from qgis.core import QgsGeometry, QgsUnitTypes, QgsWkbTypes
+from qgis.core import QgsGeometry, QgsWkbTypes
 
+from .compat import DIST_METERS, GEO_LINE, GEO_POINT
 from .error.lrserror import LrsError
 from .error.lrsqualityfeature import LrsQualityFeature
-from .error.lrsqualityfields import LrsQualityFields
 from .lrscalibpart import LrsCalibPart
 from .lrsmilestone import LrsMilestone
 from .lrsorigin import LrsOrigin
@@ -78,7 +78,7 @@ class LrsCalibRoute(LrsRouteBase):
             for line in self.lines:
                 if not line.geo:
                     continue
-                origin = LrsOrigin(QgsWkbTypes.LineGeometry, line.fid)
+                origin = LrsOrigin(GEO_LINE, line.fid)
                 self.errors.append(
                     LrsError(LrsError.NO_ROUTE_ID, line.geo, origins=[origin])
                 )
@@ -86,14 +86,14 @@ class LrsCalibRoute(LrsRouteBase):
             for point in self.points:
                 if not point.geo:
                     continue
-                origin = LrsOrigin(QgsWkbTypes.PointGeometry, point.fid)
+                origin = LrsOrigin(GEO_POINT, point.fid)
                 self.errors.append(
                     LrsError(LrsError.NO_ROUTE_ID, point.geo, origins=[origin])
                 )
 
                 # in addition it may be without measure
                 if point.measure is None:
-                    origin = LrsOrigin(QgsWkbTypes.PointGeometry, point.fid)
+                    origin = LrsOrigin(GEO_POINT, point.fid)
                     self.errors.append(
                         LrsError(LrsError.NO_MEASURE, point.geo, origins=[origin])
                     )
@@ -102,7 +102,7 @@ class LrsCalibRoute(LrsRouteBase):
             for point in self.points:
                 if not point.geo:
                     continue
-                origin = LrsOrigin(QgsWkbTypes.PointGeometry, point.fid)
+                origin = LrsOrigin(GEO_POINT, point.fid)
                 self.errors.append(
                     LrsError(
                         LrsError.ORPHAN,
@@ -115,7 +115,7 @@ class LrsCalibRoute(LrsRouteBase):
 
                 # in addition it may be without measure
                 if point.measure is None:
-                    origin = LrsOrigin(QgsWkbTypes.PointGeometry, point.fid)
+                    origin = LrsOrigin(GEO_POINT, point.fid)
                     self.errors.append(
                         LrsError(
                             LrsError.NO_MEASURE,
@@ -331,7 +331,7 @@ class LrsCalibRoute(LrsRouteBase):
         for d in duplicates:  # delete going down (sorted reverse)
             geo = QgsGeometry.fromPolylineXY(polylines[d]["polyline"])
             origin = LrsOrigin(
-                QgsWkbTypes.LineGeometry,
+                GEO_LINE,
                 polylines[d]["fid"],
                 polylines[d]["geoPart"],
                 polylines[d]["nGeoParts"],
@@ -369,7 +369,7 @@ class LrsCalibRoute(LrsRouteBase):
             poly = polylines.pop(0)
             polyline = poly["polyline"]
             origin = LrsOrigin(
-                QgsWkbTypes.LineGeometry,
+                GEO_LINE,
                 poly["fid"],
                 poly["geoPart"],
                 poly["nGeoParts"],
@@ -417,7 +417,7 @@ class LrsCalibRoute(LrsRouteBase):
                     if connected:
                         # print '%s part connected' % i
                         origin = LrsOrigin(
-                            QgsWkbTypes.LineGeometry,
+                            GEO_LINE,
                             polylines[i]["fid"],
                             polylines[i]["geoPart"],
                             polylines[i]["nGeoParts"],
@@ -577,7 +577,7 @@ class LrsCalibRoute(LrsRouteBase):
                 continue
 
             if point.measure is None:
-                origin = LrsOrigin(QgsWkbTypes.PointGeometry, point.fid)
+                origin = LrsOrigin(GEO_POINT, point.fid)
                 self.errors.append(
                     LrsError(
                         LrsError.NO_MEASURE,
@@ -603,9 +603,7 @@ class LrsCalibRoute(LrsRouteBase):
                 pnt = p["point"]
                 ph = pointHash(pnt)
 
-                origin = LrsOrigin(
-                    QgsWkbTypes.PointGeometry, point.fid, p["geoPart"], p["nGeoParts"]
-                )
+                origin = LrsOrigin(GEO_POINT, point.fid, p["geoPart"], p["nGeoParts"])
 
                 if ph not in nodes:
                     nodes[ph] = {
@@ -688,7 +686,7 @@ class LrsCalibRoute(LrsRouteBase):
                 nearPart.milestones.append(milestone)
             else:
                 origin = LrsOrigin(
-                    QgsWkbTypes.PointGeometry,
+                    GEO_POINT,
                     milestone.fid,
                     milestone.geoPart,
                     milestone.nGeoParts,
@@ -726,14 +724,13 @@ class LrsCalibRoute(LrsRouteBase):
 
     def getQualityFeatures(self):
         features = []
-        fields = LrsQualityFields()
         for segment in self.getSegments():
             # m_len = self.mapUnitsPerMeasureUnit * (segment.record.milestoneTo - segment.record.milestoneFrom)
             m_len = segment.record.milestoneTo - segment.record.milestoneFrom
             # length = segment.geo.length()
             length = self.distanceArea.measureLength(segment.geo)
             qgisUnit = (
-                QgsUnitTypes.DistanceMeters
+                DIST_METERS
                 if self.distanceArea.willUseEllipsoid()
                 else self.crs.mapUnits()
             )

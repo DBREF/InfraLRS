@@ -21,9 +21,10 @@
 """
 
 from qgis.core import QgsMapLayer, QgsProject, QgsWkbTypes
-from qgis.PyQt.QtCore import QModelIndex, Qt, pyqtSignal
+from qgis.PyQt.QtCore import QModelIndex, pyqtSignal
 from qgis.PyQt.QtGui import QStandardItem
 
+from ..lrs.compat import ITEM_DATA_ROLE_USER, LAYER_VECTOR, MATCH_FIXED_STRING
 from .lrscombomanagerbase import LrsComboManagerBase
 
 
@@ -55,7 +56,7 @@ class LrsLayerComboManager(LrsComboManagerBase):
     def layerId(self):
         idx = self.comboList[0].currentIndex()
         if idx != -1:
-            return self.comboList[0].itemData(idx, Qt.UserRole)
+            return self.comboList[0].itemData(idx, ITEM_DATA_ROLE_USER)
         return None
 
     def getLayer(self):
@@ -87,7 +88,7 @@ class LrsLayerComboManager(LrsComboManagerBase):
 
         # delete removed layers
         for i in range(self.model.rowCount() - 1, -1, -1):
-            lid = self.model.item(i).data(Qt.UserRole)
+            lid = self.model.item(i).data(ITEM_DATA_ROLE_USER)
             if lid not in QgsProject.instance().mapLayers().keys():
                 # debug("canvasLayersChanged remove lid = %s" % lid)
                 self.model.removeRows(i, 1)
@@ -95,7 +96,7 @@ class LrsLayerComboManager(LrsComboManagerBase):
         # add new layers
         for layer in QgsProject.instance().mapLayers().values():
             # print(layer)
-            if layer.type() != QgsMapLayer.VectorLayer:
+            if layer.type() != LAYER_VECTOR:
                 continue
             if (
                 self.geometryType is not None
@@ -107,11 +108,11 @@ class LrsLayerComboManager(LrsComboManagerBase):
 
             start = self.model.index(0, 0, QModelIndex())
             indexes = self.model.match(
-                start, Qt.UserRole, layer.id(), Qt.MatchFixedString
+                start, ITEM_DATA_ROLE_USER, layer.id(), MATCH_FIXED_STRING
             )
             if len(indexes) == 0:  # add new
                 item = QStandardItem(layer.name())
-                item.setData(layer.id(), Qt.UserRole)
+                item.setData(layer.id(), ITEM_DATA_ROLE_USER)
                 self.model.appendRow(item)
                 layer.nameChanged.connect(self.canvasLayersChanged)
             else:  # update text

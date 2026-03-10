@@ -30,10 +30,11 @@ from qgis.core import (
     QgsMessageLog,
     QgsPointXY,
     QgsProject,
-    QgsUnitTypes,
 )
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtWidgets import QMessageBox
+
+from .compat import DIST_FEET, DIST_METERS
 
 # name of plugin in project file
 PROJECT_PLUGIN_NAME = "lrs"
@@ -132,7 +133,7 @@ def pointHash(point):
 
 
 def convertDistanceUnits(distance, qgisUnit, lrsUnit):
-    if qgisUnit == QgsUnitTypes.DistanceMeters:
+    if qgisUnit == DIST_METERS:
         if lrsUnit == LrsUnits.METER:
             return distance
         elif lrsUnit == LrsUnits.KILOMETER:
@@ -141,7 +142,7 @@ def convertDistanceUnits(distance, qgisUnit, lrsUnit):
             return distance * 3.2808399
         elif lrsUnit == LrsUnits.MILE:
             return distance / 1609.344
-    elif qgisUnit == QgsUnitTypes.DistanceFeet:
+    elif qgisUnit == DIST_FEET:
         if lrsUnit == LrsUnits.METER:
             return distance / 3.2808399
         elif lrsUnit == LrsUnits.KILOMETER:

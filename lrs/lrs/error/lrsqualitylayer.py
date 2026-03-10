@@ -26,11 +26,10 @@ from qgis.core import (
     QgsRendererRange,
     QgsSymbol,
     QgsVectorLayer,
-    QgsWkbTypes,
 )
-from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 
+from ..compat import COLOR_BLUE, COLOR_GREEN, COLOR_RED, GEO_LINE
 from ..utils import crsString
 from .lrsqualityfields import LRS_QUALITY_FIELDS
 
@@ -45,13 +44,13 @@ class LrsQualityLayer(QgsVectorLayer):
 
         # min, max, color, label
         styles = [
-            [0, 10, QColor(Qt.green), "0 - 10 % error"],
-            [10, 30, QColor(Qt.blue), "10 - 30 % error"],
-            [30, 1000000, QColor(Qt.red), "> 30 % error"],
+            [0, 10, QColor(COLOR_GREEN), "0 - 10 % error"],
+            [10, 30, QColor(COLOR_BLUE), "10 - 30 % error"],
+            [30, 1000000, QColor(COLOR_RED), "> 30 % error"],
         ]
         ranges = []
         for style in styles:
-            symbol = QgsSymbol.defaultSymbol(QgsWkbTypes.LineGeometry)
+            symbol = QgsSymbol.defaultSymbol(GEO_LINE)
             symbol.setColor(style[2])
             range = QgsRendererRange(style[0], style[1], symbol, style[3])
             ranges.append(range)

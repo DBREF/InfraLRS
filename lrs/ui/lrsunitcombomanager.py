@@ -20,10 +20,10 @@
  ***************************************************************************/
 """
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QStandardItem
 from qgis.core import QgsProject
+from qgis.PyQt.QtGui import QStandardItem
 
+from ..lrs.compat import ITEM_DATA_ROLE_USER
 from ..lrs.utils import PROJECT_PLUGIN_NAME, LrsUnits
 from .lrscombomanagerbase import LrsComboManagerBase
 
@@ -35,7 +35,7 @@ class LrsUnitComboManager(LrsComboManagerBase):
 
         for unit in [LrsUnits.METER, LrsUnits.KILOMETER, LrsUnits.FEET, LrsUnits.MILE]:
             item = QStandardItem(LrsUnits.unitName(unit))
-            item.setData(unit, Qt.UserRole)
+            item.setData(unit, ITEM_DATA_ROLE_USER)
             self.model.appendRow(item)
 
         self.reset()
@@ -43,7 +43,7 @@ class LrsUnitComboManager(LrsComboManagerBase):
     def unit(self):
         idx = self.comboList[0].currentIndex()
         if idx != -1:
-            return self.comboList[0].itemData(idx, Qt.UserRole)
+            return self.comboList[0].itemData(idx, ITEM_DATA_ROLE_USER)
         return LrsUnits.UNKNOWN
 
     def writeToProject(self):
@@ -56,7 +56,7 @@ class LrsUnitComboManager(LrsComboManagerBase):
         ]
 
         unit = LrsUnits.unitFromName(name)
-        idx = self.comboList[0].findData(unit, Qt.UserRole)
+        idx = self.comboList[0].findData(unit, ITEM_DATA_ROLE_USER)
         # debug( "readFromProject settingsName = %s name = %s idx = %s" % ( self.settingsName, name, idx) )
         if idx != -1:
             for combo in self.comboList:
