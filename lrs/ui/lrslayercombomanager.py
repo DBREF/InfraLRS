@@ -108,7 +108,7 @@ class LrsLayerComboManager(LrsComboManagerBase):
 
             start = self.model.index(0, 0, QModelIndex())
             indexes = self.model.match(
-                start, ITEM_DATA_ROLE_USER, layer.id(), MATCH_FIXED_STRING
+                start, ITEM_DATA_ROLE_USER, layer.id(), 1, MATCH_FIXED_STRING
             )
             if len(indexes) == 0:  # add new
                 item = QStandardItem(layer.name())
