@@ -1,3 +1,8 @@
+LRS-Erweiterung für QGIS
+===================
+
+Lineares Referenzierungssystem als Erweiterung für QGIS.
+
 LRS Plugin for QGIS
 ===================
 
