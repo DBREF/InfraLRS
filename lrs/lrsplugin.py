@@ -29,6 +29,8 @@ from qgis.PyQt.QtWidgets import QAction
 from .lrs.compat import DOCK_RIGHT
 from .ui.lrsdockwidget import LrsDockWidget
 
+__VERSION__ = "1.3.0"
+
 
 class LrsPlugin:
     def __init__(self, iface):
